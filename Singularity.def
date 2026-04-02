@@ -10,7 +10,7 @@
 #   ./XChemExplorer_wehi
 
 Bootstrap: docker
-From: debian:bullseye
+From: rockylinux:9
 
 %labels
     org.opencontainers.image.title "XChemExplorer"
