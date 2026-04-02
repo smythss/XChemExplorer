@@ -67,9 +67,9 @@ NX latency is a killer when trying to do anything graphical, like model building
 1. Setup fuse (requires admin rights)
 Install FUSE (http://github.com/libfuse/libfuse)
 
-Centos:
+Rocky Linux:
 ```
-sudo yum install fuse-utils sshfs
+sudo dnf install fuse-sshfs
 ```
 Ubuntu:
 ```

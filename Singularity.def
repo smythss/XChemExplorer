@@ -17,14 +17,12 @@ From: rockylinux:9
     org.opencontainers.image.description "XChemExplorer for WEHI Milton HPC — CCP4/PHENIX sourced from the host"
 
 %post
-    apt-get update \
-    && apt-get upgrade -y \
-    && apt-get install -y \
-        libxrender1 libfontconfig libxext6 \
-        libglib2.0-0 libsm6 libxi6 libxrandr2 libxfixes3 libxcursor1 libxinerama1 \
-        libgomp1 libxdamage1 libxcb-shm0 libxcb-render0 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    dnf update -y \
+    && dnf install -y \
+        libXrender fontconfig libXext \
+        glib2 libSM libXi libXrandr libXfixes libXcursor libXinerama \
+        libgomp libXdamage libxcb \
+    && dnf clean all
 
 # Copy XChemExplorer source into the container.
 # The container uses ccp4-python from the host-mounted CCP4 installation, so
