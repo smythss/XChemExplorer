@@ -58,7 +58,7 @@ fi
 # Provides: refmac5, acedrg, grade, grade2, giant.create_occupancy_params,
 #           gemmi (CCP4 7.1+)
 # ---------------------------------------------------------------------------
-: "${CCP4:=/stornext/System/data/apps/ccp4/ccp4-8.0}"
+: "${CCP4:=/stornext/System/data/software/rhel/base/structbio/ccp4/ccp4-8.0/}"
 
 if [[ ! -d "${CCP4}" ]]; then
     echo "ERROR: CCP4 directory not found: ${CCP4}" >&2
@@ -74,7 +74,7 @@ fi
 # Provides: phenix.molprobity, phenix.find_tls_groups,
 #           mmtbx.validate_ligands, phenix.elbow
 # ---------------------------------------------------------------------------
-: "${PHENIX:=/stornext/System/data/apps/phenix/phenix-1.21}"
+: "${PHENIX:=/stornext/System/data/software/rhel/9/base/structbio/phenix/1.21.2-5419/}"
 
 # ---------------------------------------------------------------------------
 # MOGUL — optional, requires a CCDC licence.
