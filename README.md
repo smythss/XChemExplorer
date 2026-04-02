@@ -137,6 +137,81 @@ ccp4-python -m pip install panddas
 3. If your IT team doesn’t want to help you, try setting up a virtual machine – then you have root permissions and can do whatever you like.  Performance ought to be okay.
 
 
+## Installation on WEHI Milton HPC
+
+XChemExplorer can be run on the [WEHI Milton HPC](https://wehieduau.sharepoint.com/sites/rc2/SitePages/using-milton.aspx) using an [Apptainer](https://apptainer.org/) (formerly Singularity) container.  CCP4 and PHENIX are **not** bundled in the container image; they are bind-mounted from the HPC filesystem at runtime.
+
+### Prerequisites
+
+| Requirement | Notes |
+|---|---|
+| **Apptainer / Singularity** | Available on Milton via `module load apptainer` (or equivalent). |
+| **CCP4 8.0+** | Must be installed on the HPC filesystem. The default path used by the launch script is `/stornext/System/data/apps/ccp4/ccp4-8.0`. |
+| **PHENIX** *(optional, recommended)* | Default path: `/stornext/System/data/apps/phenix/phenix-1.21`. |
+| **MOGUL** *(optional)* | Requires a CCDC licence. Set `BDG_TOOL_MOGUL` to the full path of the `mogul` executable. |
+| **qsub** | On Milton (SLURM), install the `slurm-torque` compatibility package so that a `qsub` wrapper is present in `PATH`. |
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/xchem/XChemExplorer
+cd XChemExplorer/
+```
+
+### 2. Build the container image
+
+Run the following command **once** from the repository root.  This requires Apptainer to be available (load the module first if needed):
+
+```bash
+module load apptainer   # adjust module name to match your Milton environment
+apptainer build xce_wehi.sif Singularity.def
+```
+
+The resulting `xce_wehi.sif` image bundles the XChemExplorer source and all required Python/GUI libraries.  It does **not** include CCP4 or PHENIX.
+
+### 3. Configure software paths (if necessary)
+
+The `XChemExplorer_wehi` launch script uses the following defaults:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `CCP4` | `/stornext/System/data/apps/ccp4/ccp4-8.0` | CCP4 installation directory |
+| `PHENIX` | `/stornext/System/data/apps/phenix/phenix-1.21` | PHENIX installation directory |
+| `BDG_TOOL_MOGUL` | *(unset)* | Full path to the `mogul` executable |
+
+If the software is installed elsewhere, export the relevant environment variable **before** running the launch script, for example:
+
+```bash
+export CCP4=/path/to/ccp4
+export PHENIX=/path/to/phenix           # optional
+export BDG_TOOL_MOGUL=/path/to/mogul    # optional
+```
+
+### 4. Launch XChemExplorer
+
+```bash
+./XChemExplorer_wehi
+```
+
+The script will:
+1. Verify that Apptainer/Singularity and the container image (`xce_wehi.sif`) are present.
+2. Bind-mount CCP4 (and optionally PHENIX/MOGUL) from the host into the container.
+3. Start XChemExplorer via `ccp4-python -m xce` inside the container.
+
+You can add an alias to your shell profile for convenience:
+
+```bash
+alias xce="<full_path_to_repository>/XChemExplorer_wehi"
+```
+
+### Notes
+
+- **Display / X11**: You need a working X11 session.  On Milton, use an interactive job with X11 forwarding (e.g. `sinteractive --x11`) or an NX/remote-desktop session.
+- **SLURM / qsub**: XCE submits processing jobs via `qsub`.  On Milton this is provided by the `slurm-torque` compatibility layer.  Confirm `qsub` is in your `PATH` before launching XCE.
+- **Rebuilding the image**: Re-run `apptainer build xce_wehi.sif Singularity.def` whenever you update the XChemExplorer source.
+
+---
+
 ## License
 
 XChemExplorer is licensed under the MIT license.
