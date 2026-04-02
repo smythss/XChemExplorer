@@ -7,5 +7,8 @@ module load ccp4/7.1.018
 export BDG_TOOL_MOGUL="/dls_sw/apps/CSDS/2024.1.0/ccdc-software/mogul/bin/mogul"
 export XChemExplorer_DIR=$(readlink -e $0 | xargs dirname)
 export LD_PRELOAD="/usr/lib64/libfreetype.so:${LD_PRELOAD}"
+# Required for Qt in VNC-based sessions (e.g. OnDemand GPU desktop) where the
+# MIT-SHM X11 shared-memory extension is not available.
+export QT_X11_NO_MITSHM=1
 
 ccp4-python $XChemExplorer_DIR/launch.py
