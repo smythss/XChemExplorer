@@ -71,10 +71,6 @@ Rocky Linux:
 ```
 sudo dnf install fuse-sshfs
 ```
-Ubuntu:
-```
-sudo apt-get install sshfs
-```
 See https://gist.github.com/cstroe/e83681e3510b43e3f618 for details.  FUSE is also available for Mac.  Avoid building from source unless you really have to.
 
 Create a /dls mount point and give your user ownership:
