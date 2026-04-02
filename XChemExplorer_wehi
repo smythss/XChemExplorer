@@ -58,7 +58,7 @@ fi
 # Provides: refmac5, acedrg, grade, grade2, giant.create_occupancy_params,
 #           gemmi (CCP4 7.1+)
 # ---------------------------------------------------------------------------
-: "${CCP4:=/stornext/System/data/software/rhel/base/structbio/ccp4/ccp4-8.0/}"
+: "${CCP4:=/stornext/System/data/software/rhel/base/structbio/ccp4/ccp4-7.1/}"
 
 if [[ ! -d "${CCP4}" ]]; then
     echo "ERROR: CCP4 directory not found: ${CCP4}" >&2
