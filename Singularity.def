@@ -1,0 +1,48 @@
+# Apptainer/Singularity container definition for XChemExplorer on WEHI Milton HPC.
+#
+# CCP4 and PHENIX are NOT bundled in this image; they are bind-mounted from
+# the HPC filesystem at runtime by the XChemExplorer_wehi launch script.
+#
+# Build (from the repository root):
+#   apptainer build xce_wehi.sif Singularity.def
+#
+# Run via the provided launch script:
+#   ./XChemExplorer_wehi
+
+Bootstrap: docker
+From: debian:bullseye
+
+%labels
+    org.opencontainers.image.title "XChemExplorer"
+    org.opencontainers.image.description "XChemExplorer for WEHI Milton HPC — CCP4/PHENIX sourced from the host"
+
+%post
+    apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y \
+        libxrender1 libfontconfig libxext6 \
+        libglib2.0-0 libsm6 libxi6 libxrandr2 libxfixes3 libxcursor1 libxinerama1 \
+        libgomp1 libxdamage1 libxcb-shm0 libxcb-render0 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy XChemExplorer source into the container.
+# The container uses ccp4-python from the host-mounted CCP4 installation, so
+# no package compilation or egg build is required here.
+%files
+    xce /xce/xce
+    coot /xce/coot
+    launch.py /xce/launch.py
+    setup.py /xce/setup.py
+    setup.cfg /xce/setup.cfg
+
+%environment
+    # Allow Qt to work without shared memory (required for some X11 setups)
+    export QT_X11_NO_MITSHM=1
+    # Tell XChemExplorer where its own files live inside the container
+    export XChemExplorer_DIR=/xce
+    # Make the xce Python package importable by ccp4-python from the host
+    export PYTHONPATH=/xce${PYTHONPATH:+:${PYTHONPATH}}
+
+%runscript
+    exec "$@"
