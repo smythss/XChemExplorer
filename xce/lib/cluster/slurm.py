@@ -12,7 +12,9 @@ from datetime import datetime
 from xce.lib.XChemLog import updateLog
 from uuid import uuid4
 
-CLUSTER_USER = os.environ.get("CLUSTER_USER") or getpass.getuser()
+CLUSTER_USER = (os.environ.get("CLUSTER_USER")
+                or os.environ.get("USER")
+                or getpass.getuser())
 
 TOKEN = None
 TOKEN_EXPIRY = None
