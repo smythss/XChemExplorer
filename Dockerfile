@@ -1,7 +1,7 @@
 FROM gcr.io/diamond-privreg/xchem/ccp4:7.1 as ccp4
 FROM gcr.io/diamond-privreg/xchem/phenix:1.20 as phenix
 
-FROM registry.hub.docker.com/library/debian:bullseye as xce 
+FROM rockylinux:9 as xce
 
 COPY --from=ccp4 /ccp4-7.1 /ccp4-7.1
 
@@ -10,13 +10,12 @@ WORKDIR ${XCE_DIR}
 
 COPY . ${XCE_DIR}
 
-RUN apt-get update \
-    && apt-get upgrade -y \
-    && apt-get install -y \
-        libxrender1 libfontconfig libxext6 \
-        libglib2.0-0 libsm6 libxi6 libxrandr2 libxfixes3 libxcursor1 libxinerama1 \
-        libgomp1 libxdamage1 libxcb-shm0 libxcb-render0 \
-    && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+RUN dnf update -y \
+    && dnf install -y \
+        libXrender fontconfig libXext \
+        glib2 libSM libXi libXrandr libXfixes libXcursor libXinerama \
+        libgomp libXdamage libxcb \
+    && dnf clean all
 
 ENV QT_X11_NO_MITSHM=1 \
     XChemExplorer_DIR=${XCE_DIR}

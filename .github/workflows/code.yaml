@@ -12,7 +12,7 @@ jobs:
   lint:
     runs-on: "ubuntu-latest"
     container:
-      image: python:2.7.18-buster
+      image: rockylinux:9
     steps:
       - name: Checkout Source
         uses: actions/checkout@v3
@@ -21,12 +21,12 @@ jobs:
 
       - name: Install pip3
         run: |
-          apt-get update
-          apt-get install -y python3-pip
+          dnf update -y
+          dnf install -y python3-pip
 
       - name: Install linters
         run: |
-          pip install flake8
+          pip3 install flake8
           pip3 install black[python2]
 
       - name: Lint with flake8
