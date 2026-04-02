@@ -133,6 +133,20 @@ ccp4-python -m pip install panddas
 3. If your IT team doesn’t want to help you, try setting up a virtual machine – then you have root permissions and can do whatever you like.  Performance ought to be okay.
 
 
+## Running XCE on a Diamond OnDemand GPU Desktop session
+
+XCE can be launched directly from a [Diamond OnDemand](https://ondemand.diamond.ac.uk/) GPU Desktop interactive session.  OnDemand desktop sessions use TurboVNC to deliver the graphical environment, which does not support the X11 MIT-SHM shared-memory extension.  The `XChemExplorer_dls` launch script sets `QT_X11_NO_MITSHM=1` to handle this automatically.
+
+1. Start a **GPU Desktop** interactive session from the OnDemand portal.
+2. Open a terminal inside the desktop.
+3. Navigate to your visit data directory and launch XCE:
+```bash
+cd /dls/labxchem/data/<year>/<visit>/processing
+/dls/science/groups/i04-1/software/XChem/XChemExplorer_dls
+```
+
+No additional configuration is required; the `QT_X11_NO_MITSHM=1` environment variable is set by the launch script so that the Qt GUI renders correctly inside the VNC-backed desktop.
+
 ## Installation on WEHI Milton HPC
 
 XChemExplorer can be run on the [WEHI Milton HPC](https://wehieduau.sharepoint.com/sites/rc2/SitePages/using-milton.aspx) using an [Apptainer](https://apptainer.org/) (formerly Singularity) container.  CCP4 and PHENIX are **not** bundled in the container image; they are bind-mounted from the HPC filesystem at runtime.
