@@ -6,16 +6,13 @@ import paramiko
 import time
 import traceback
 import gtk
+import getpass
 from PyQt4 import QtGui
 from datetime import datetime
 from xce.lib.XChemLog import updateLog
 from uuid import uuid4
 
-CLUSTER_BASTION = "wilson.diamond.ac.uk"
-CLUSTER_USER = os.environ.get("CLUSTER_USER", os.getlogin())
-CLUSTER_HOST = "slurm-rest.diamond.ac.uk"
-CLUSTER_PORT = 8443
-CLUSTER_PARTITION = "cs05r"
+CLUSTER_USER = os.environ.get("CLUSTER_USER") or getpass.getuser()
 
 TOKEN = None
 TOKEN_EXPIRY = None
