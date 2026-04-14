@@ -91,6 +91,12 @@ fi
 BINDS="${CCP4}:${CCP4}"
 CONTAINER_PATH="${CCP4}/bin"
 
+# Bind /vast/ so that WEHI's Vast storage (project and scratch data
+# directories) is visible inside the container.
+if [[ -d /vast ]]; then
+    BINDS="${BINDS},/vast:/vast"
+fi
+
 if [[ -d "${PHENIX:-}" ]]; then
     BINDS="${BINDS},${PHENIX}:${PHENIX}"
     CONTAINER_PATH="${CONTAINER_PATH}:${PHENIX}/build/bin"
