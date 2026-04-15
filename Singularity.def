@@ -42,5 +42,6 @@ From: rockylinux:9
     # Make the xce Python package importable by ccp4-python from the host
     export PYTHONPATH=/xce${PYTHONPATH:+:${PYTHONPATH}}
 
+
 %runscript
     exec "$@"

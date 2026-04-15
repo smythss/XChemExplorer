@@ -26,7 +26,8 @@
 #                                  on Milton (SLURM) install the
 #                                  slurm-torque package or equivalent so
 #                                  that a qsub wrapper is present in PATH.
-
+unset LD_PRELOAD
+export CLUSTER_USER="${CLUSTER_USER:-$USER}"
 set -euo pipefail
 
 SCRIPT_DIR=$(readlink -e "${BASH_SOURCE[0]}" | xargs dirname)
@@ -121,10 +122,11 @@ CONTAINER_PATH="${CONTAINER_PATH}:/usr/local/bin:/usr/bin:/bin"
 # ---------------------------------------------------------------------------
 APPTAINER_ARGS=(
     "exec"
-    "--bind" "${BINDS}"
+    "--bind" "${BINDS},/vast/"
     "--env" "PATH=${CONTAINER_PATH}"
     "--env" "CCP4=${CCP4}"
     "--env" "XChemExplorer_DIR=/xce"
+    "--env" "PYTHONPATH=/xce${PYTHONPATH:+:${PYTHONPATH}}"
 )
 
 if [[ -d "${PHENIX:-}" ]]; then
