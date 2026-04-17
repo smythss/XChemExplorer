@@ -137,7 +137,8 @@ if [[ -n "${BDG_TOOL_MOGUL:-}" ]]; then
     APPTAINER_ARGS+=("--env" "BDG_TOOL_MOGUL=${BDG_TOOL_MOGUL}")
 fi
 
-APPTAINER_ARGS+=("${SIF}" "${CCP4}/bin/ccp4-python" "-m" "xce")
+APPTAINER_ARGS+=("${SIF}" "${CCP4}/bin/ccp4-python" \
+    "-c" "import sys; sys.path.insert(0, '/xce'); import runpy; runpy.run_module('xce', run_name='__main__')")
 
 # ---------------------------------------------------------------------------
 # Launch XChemExplorer inside the container.
