@@ -7,11 +7,34 @@ and parsing aimless.log files.
 Bypasses XCE's built-in autoprocessing scan, which has hard-coded DLS path
 assumptions. Works with Australian Synchrotron MX1 and MX3 (fast_dp) data.
 
+Prerequisite — create the SQLite file first via XCE:
+    1. Launch XCE and set the Project Directory (Settings tab).
+    2. XCE creates <project_dir>/<project_name>.sqlite automatically on startup.
+    3. Close XCE (or keep it closed while this script runs).
+
 Usage:
     python3 populate_xce_db.py
 
     The script will prompt for each required path interactively.
     Tab completion is supported.
+
+Compound / SMILES data:
+    If you ran prepare_fastdp_for_xce.sh or prepare_mx1_for_xce.sh first,
+    compound information is already stored as <crystal>.smi and <crystal>.cmpd
+    files inside each crystal directory. This script reads those files directly
+    — you do NOT need to supply the library or distribution CSVs.
+
+    The CSV prompts below are only a fallback for cases where the prep scripts
+    were not run (or were run without SMILES data). Leave them blank if the
+    .smi / .cmpd files are present.
+
+After running this script:
+    1. Open XCE and go to the Datasets tab.
+    2. Select your target from the dropdown.
+    3. Click "Select Best Autoprocessing Result" (Run button, NOT Status) to
+       trigger auto-assignment and populate DataProcessingAutoAssigned.
+    4. Do NOT click the Status buttons — they crash at WEHI (CLUSTER_BASTION
+       is a DLS-only constant that is not defined here).
 """
 
 import csv
@@ -451,9 +474,9 @@ def main():
     proc_dir    = os.path.realpath(_prompt("processed/<target>/ dir (contains crystal subdirs) : "))
     project_dir = os.path.realpath(_prompt("XCE Project Directory                             : "))
     target      = _prompt(                 "Target / ProteinName (e.g. Bax)                   : ")
-    smiles_csv  = _prompt(                 "SMILES library CSV (LifeChem...csv) [blank=skip]   : ")
-    dist_csv    = _prompt(                 "Compound distribution CSV        [blank=skip]       : ")
-    beamline    = _prompt(                 "Beamline: mx1 or mx3             [default: mx1]     : ") or "mx1"
+    smiles_csv  = _prompt(                 "SMILES library CSV   [blank if .smi files present]  : ")
+    dist_csv    = _prompt(                 "Distribution CSV     [blank if .cmpd files present] : ")
+    beamline    = _prompt(                 "Beamline mx1/mx3 (only needed if CSVs above given)  : ") or "mx1"
 
     if not os.path.isfile(db_path):
         raise SystemExit(f"ERROR: .sqlite file not found: {db_path}")
@@ -543,9 +566,10 @@ def main():
                     program = proc_code
 
                 # Replicate XCE's autoprocessing subdir naming:
-                # <visit>-<run><autoproc>_<proc_code>
-                autoproc_tag = "unknown"
-                ap_subdir = f"{visit}-{run}{autoproc_tag}_{proc_code}"
+                # <visit>-<run><DataProcessingProgram>_<DataCollectionSubdir>
+                # XCE's checkExistingFiles() reconstructs this path from DB fields,
+                # so autoproc_tag MUST equal DataProcessingProgram (not "unknown").
+                ap_subdir = f"{visit}-{run}{program}_{proc_code}"
                 dest_dir = os.path.join(project_dir, xtal, "autoprocessing", ap_subdir)
                 os.makedirs(dest_dir, exist_ok=True)
 
@@ -667,6 +691,11 @@ def main():
     conn.close()
     print()
     print(f"Done: {n_insert} inserted, {n_update} updated, {n_skip} skipped.")
+    print()
+    print("Next steps in XCE:")
+    print("  1. Open XCE -> Datasets tab -> select target from dropdown.")
+    print("  2. Click 'Select Best Autoprocessing Result' (Run button, NOT Status).")
+    print("  3. Do NOT click Status buttons — they crash at WEHI (CLUSTER_BASTION undefined).")
 
 
 if __name__ == "__main__":
