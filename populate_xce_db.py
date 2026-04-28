@@ -450,7 +450,7 @@ def main():
     db_path     = os.path.realpath(_prompt("XCE .sqlite file path                             : "))
     proc_dir    = os.path.realpath(_prompt("processed/<target>/ dir (contains crystal subdirs) : "))
     project_dir = os.path.realpath(_prompt("XCE Project Directory                             : "))
-    target      = _prompt(                 "Target / ProteinName (e.g. ctd)                   : ")
+    target      = _prompt(                 "Target / ProteinName (e.g. Bax)                   : ")
     smiles_csv  = _prompt(                 "SMILES library CSV (LifeChem...csv) [blank=skip]   : ")
     dist_csv    = _prompt(                 "Compound distribution CSV        [blank=skip]       : ")
     beamline    = _prompt(                 "Beamline: mx1 or mx3             [default: mx1]     : ") or "mx1"

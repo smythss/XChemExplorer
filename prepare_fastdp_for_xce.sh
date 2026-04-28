@@ -37,7 +37,7 @@ set -euo pipefail
 
 read -rep "Enter full path to source directory (containing fast_dp_results_* folders): " SOURCE_DIR
 read -rep "Enter full path to beamline directory (set as XCE Data Collection Directory): " DEST_DIR
-read -rep "Target name (e.g. cRel, shown in XCE Datasets tab target dropdown):           " TARGET_NAME
+read -rep "Target name (e.g. Bax, shown in XCE Datasets tab target dropdown):           " TARGET_NAME
 read -rep "SMILES library CSV  (e.g. LifeChem...csv) [leave blank to skip]:               " SMILES_CSV
 read -rep "Compound distribution CSV (e.g. MX3...csv) [leave blank to skip]:            " DIST_CSV
 
