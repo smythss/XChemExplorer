@@ -170,9 +170,12 @@ for crystal, sn in sorted(crystal_sn.items()):
         print(f'  SKIP (no dest dir): {crystal}')
         missing += 1
         continue
-    smi_path = os.path.join(crystal_dir, crystal + '.smi')
+    smi_path  = os.path.join(crystal_dir, crystal + '.smi')
+    cmpd_path = os.path.join(crystal_dir, crystal + '.cmpd')
     with open(smi_path, 'w') as fh:
         fh.write(smiles + '\n')
+    with open(cmpd_path, 'w') as fh:
+        fh.write(sn + '\n')
     print(f'  SMI  {crystal}  ← {sn}  ({smiles[:30]}...)')
     written += 1
 

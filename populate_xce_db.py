@@ -14,9 +14,11 @@ Usage:
     Tab completion is supported.
 """
 
+import csv
 import glob
 import math
 import os
+import re
 import readline
 import shutil
 import sqlite3
@@ -269,6 +271,53 @@ def compute_alert(d):
 
 
 # ---------------------------------------------------------------------------
+# Compound / SMILES helpers
+# ---------------------------------------------------------------------------
+
+def load_smiles_map(smiles_csv):
+    """Return dict: SN_code -> SMILES  from LifeChem-style library CSV.
+
+    Expects columns 'CA Sample Number' and 'QCL_SMILES'.
+    """
+    smap = {}
+    with open(smiles_csv, newline="", encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            sn     = row.get("CA Sample Number", "").strip()
+            smiles = row.get("QCL_SMILES", "").strip()
+            if sn and smiles:
+                smap[sn] = smiles
+    return smap
+
+
+def load_crystal_sn_map(dist_csv, beamline):
+    """Return dict: crystal_name -> SN_code from a distribution CSV.
+
+    Supports two formats:
+      MX3/ASMX  – columns 'Name' (e.g. MPC-0019-1-SN02731452) and 'Compound' (SN code)
+      MX1       – columns 'source_directory' (SN) and 'target_directory' (dir/crystal name)
+    """
+    crystal_sn = {}
+    with open(dist_csv, newline="", encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            if beamline == "mx3":
+                sn     = row.get("Compound", "").strip()
+                target = row.get("Name",     "").strip()
+                if sn and target:
+                    stripped = re.sub(r"^fast_dp_results_", "", target)
+                    parts = stripped.split("-")
+                    crystal = "-".join(parts[:3]).lower() if len(parts) >= 3 else stripped.lower()
+                    crystal_sn[crystal] = sn
+            else:  # mx1
+                sn     = row.get("source_directory", "").strip()
+                target = row.get("target_directory", "").strip()
+                if sn and target:
+                    parts = target.split("_")
+                    crystal = "_".join(parts[:3]) if len(parts) >= 3 else target
+                    crystal_sn[crystal] = sn
+    return crystal_sn
+
+
+# ---------------------------------------------------------------------------
 # SQLite helpers
 # ---------------------------------------------------------------------------
 
@@ -363,6 +412,27 @@ def upsert(conn, xtal, visit, run, proc_code, data):
         return "UPDATE"
 
 
+def upsert_main_table(conn, xtal, compound_code, smiles, protein_name):
+    """Insert or update CompoundCode and CompoundSMILES in mainTable."""
+    cur = conn.execute("SELECT ID FROM mainTable WHERE CrystalName=?", (xtal,))
+    row = cur.fetchone()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    user = os.environ.get("USER", "populate_xce_db")
+    if row is None:
+        conn.execute(
+            "INSERT INTO mainTable (CrystalName, CompoundCode, CompoundSMILES, "
+            "ProteinName, LastUpdated, LastUpdated_by) VALUES (?,?,?,?,?,?)",
+            (xtal, compound_code, smiles, protein_name, now, user),
+        )
+    else:
+        conn.execute(
+            "UPDATE mainTable SET CompoundCode=?, CompoundSMILES=?, "
+            "LastUpdated=?, LastUpdated_by=? WHERE CrystalName=?",
+            (compound_code, smiles, now, user, xtal),
+        )
+    conn.commit()
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -381,6 +451,9 @@ def main():
     proc_dir    = os.path.realpath(_prompt("processed/<target>/ dir (contains crystal subdirs) : "))
     project_dir = os.path.realpath(_prompt("XCE Project Directory                             : "))
     target      = _prompt(                 "Target / ProteinName (e.g. ctd)                   : ")
+    smiles_csv  = _prompt(                 "SMILES library CSV (LifeChem...csv) [blank=skip]   : ")
+    dist_csv    = _prompt(                 "Compound distribution CSV        [blank=skip]       : ")
+    beamline    = _prompt(                 "Beamline: mx1 or mx3             [default: mx1]     : ") or "mx1"
 
     if not os.path.isfile(db_path):
         raise SystemExit(f"ERROR: .sqlite file not found: {db_path}")
@@ -390,6 +463,26 @@ def main():
         raise SystemExit(f"ERROR: project dir not found: {project_dir}")
     if not target:
         raise SystemExit("ERROR: target name cannot be empty.")
+    if smiles_csv and not os.path.isfile(smiles_csv):
+        raise SystemExit(f"ERROR: SMILES CSV not found: {smiles_csv}")
+    if dist_csv and not os.path.isfile(dist_csv):
+        raise SystemExit(f"ERROR: Distribution CSV not found: {dist_csv}")
+
+    # Build compound lookup if CSVs supplied
+    crystal_to_smiles = {}   # crystal_name -> (compound_code, smiles)
+    if smiles_csv and dist_csv:
+        print("\nLoading compound/SMILES data...")
+        smiles_map  = load_smiles_map(smiles_csv)
+        crystal_sn  = load_crystal_sn_map(dist_csv, beamline.lower())
+        for crystal, sn in crystal_sn.items():
+            smiles = smiles_map.get(sn)
+            if smiles:
+                crystal_to_smiles[crystal] = (sn, smiles)
+            else:
+                print(f"  WARNING: no SMILES for {crystal} (SN={sn})")
+        print(f"  {len(crystal_to_smiles)} crystals with SMILES, "
+              f"{len(crystal_sn) - len(crystal_to_smiles)} missing")
+        print()
 
     # Derive visit to match XCE's getVisitAndBeamline logic for non-DLS paths:
     # processedDir = .../ctd-retry/processed/ctd  → visit = 'ctd-retry'  ([-3])
@@ -541,8 +634,31 @@ def main():
                 action = upsert(conn, xtal, visit, run, proc_code, data)
                 res_str = stats["DataProcessingResolutionHigh"]
                 sg_str  = stats["DataProcessingSpaceGroup"]
+
+                # Populate mainTable with compound info.
+                # Priority 1: .smi / .cmpd files written by prepare_*_for_xce.sh
+                # Priority 2: CSV lookup (if CSVs were supplied at prompt)
+                compound_note = ""
+                smi_file  = os.path.join(proc_dir, xtal, xtal + ".smi")
+                cmpd_file = os.path.join(proc_dir, xtal, xtal + ".cmpd")
+                if os.path.isfile(smi_file) and os.path.isfile(cmpd_file):
+                    with open(smi_file)  as f: file_smiles = f.read().strip()
+                    with open(cmpd_file) as f: file_cmpd   = f.read().strip()
+                    if file_smiles and file_cmpd:
+                        upsert_main_table(conn, xtal, file_cmpd, file_smiles, args_target)
+                        compound_note = f"  cmpd={file_cmpd} (from file)"
+                elif crystal_to_smiles:
+                    # Fall back to CSV lookup
+                    entry = crystal_to_smiles.get(xtal) or crystal_to_smiles.get(xtal.lower())
+                    if entry:
+                        compound_code, smiles = entry
+                        upsert_main_table(conn, xtal, compound_code, smiles, args_target)
+                        compound_note = f"  cmpd={compound_code} (from CSV)"
+                    else:
+                        compound_note = "  cmpd=NOT_FOUND"
+
                 print(f"  {action:6s}  {xtal}  run={run}  {proc_code}  "
-                      f"res={res_str}  SG={sg_str}")
+                      f"res={res_str}  SG={sg_str}{compound_note}")
                 if action == "INSERT":
                     n_insert += 1
                 else:
