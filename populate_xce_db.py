@@ -8,17 +8,16 @@ Bypasses XCE's built-in autoprocessing scan, which has hard-coded DLS path
 assumptions. Works with Australian Synchrotron MX1 and MX3 (fast_dp) data.
 
 Usage:
-    python3 populate_xce_db.py \\
-        --db      /vast/scratch/users/smyth.s/ctd-retry/ctd-retry.sqlite \\
-        --procdir /vast/scratch/users/smyth.s/ctd-retry/processed/ctd \\
-        --project /vast/scratch/users/smyth.s/ctd-retry \\
-        --target  ctd
+    python3 populate_xce_db.py
+
+    The script will prompt for each required path interactively.
+    Tab completion is supported.
 """
 
-import argparse
 import glob
 import math
 import os
+import readline
 import shutil
 import sqlite3
 from datetime import datetime
@@ -368,29 +367,29 @@ def upsert(conn, xtal, visit, run, proc_code, data):
 # Main
 # ---------------------------------------------------------------------------
 
+def _prompt(msg):
+    """Read a path from stdin with tab completion."""
+    readline.set_completer_delims(" \t\n;")
+    readline.parse_and_bind("tab: complete")
+    return input(msg).strip()
+
+
 def main():
-    parser = argparse.ArgumentParser(
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument("--db",      required=True,
-                        help="Path to XCE .sqlite file (e.g. ctd-retry.sqlite)")
-    parser.add_argument("--procdir", required=True,
-                        help="Path to processed/<target>/ dir (contains crystal subdirs)")
-    parser.add_argument("--project", required=True,
-                        help="XCE Project Directory (autoprocessing/ dirs created here)")
-    parser.add_argument("--target",  required=True,
-                        help="Target / ProteinName (e.g. ctd)")
-    args = parser.parse_args()
+    print(__doc__)
 
-    proc_dir    = os.path.realpath(args.procdir)
-    project_dir = os.path.realpath(args.project)
-    db_path     = os.path.realpath(args.db)
+    db_path     = os.path.realpath(_prompt("XCE .sqlite file path                             : "))
+    proc_dir    = os.path.realpath(_prompt("processed/<target>/ dir (contains crystal subdirs) : "))
+    project_dir = os.path.realpath(_prompt("XCE Project Directory                             : "))
+    target      = _prompt(                 "Target / ProteinName (e.g. ctd)                   : ")
 
-    if not os.path.isdir(proc_dir):
-        raise SystemExit(f"ERROR: --procdir not found: {proc_dir}")
     if not os.path.isfile(db_path):
-        raise SystemExit(f"ERROR: --db not found: {db_path}")
+        raise SystemExit(f"ERROR: .sqlite file not found: {db_path}")
+    if not os.path.isdir(proc_dir):
+        raise SystemExit(f"ERROR: processed dir not found: {proc_dir}")
+    if not os.path.isdir(project_dir):
+        raise SystemExit(f"ERROR: project dir not found: {project_dir}")
+    if not target:
+        raise SystemExit("ERROR: target name cannot be empty.")
 
     # Derive visit to match XCE's getVisitAndBeamline logic for non-DLS paths:
     # processedDir = .../ctd-retry/processed/ctd  → visit = 'ctd-retry'  ([-3])
@@ -406,6 +405,7 @@ def main():
     conn = sqlite3.connect(db_path)
     ensure_columns(conn)
 
+    args_target = target
     n_insert = n_update = n_skip = 0
 
     for crystal_dir in sorted(glob.glob(os.path.join(proc_dir, "*"))):
@@ -486,7 +486,7 @@ def main():
                     "%Y-%m-%d %H:%M:%S")
 
                 data = {
-                    "ProteinName":                         args.target,
+                    "ProteinName":                         args_target,
                     "DataCollectionBeamline":              "unknown",
                     "DataCollectionOutcome":               "success",
                     "DataCollectionDate":                  timestamp,
