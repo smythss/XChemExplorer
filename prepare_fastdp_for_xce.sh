@@ -35,10 +35,10 @@
 
 set -euo pipefail
 
-read -rp "Enter full path to source directory (containing fast_dp_results_* folders): " SOURCE_DIR
-read -rp "Enter full path to destination directory (XCE Data Collection Directory):    " DEST_DIR
-read -rp "SMILES library CSV  (e.g. LifeChem...csv) [leave blank to skip]:              " SMILES_CSV
-read -rp "Compound distribution CSV (e.g. MX3...csv) [leave blank to skip]:            " DIST_CSV
+read -rep "Enter full path to source directory (containing fast_dp_results_* folders): " SOURCE_DIR
+read -rep "Enter full path to destination directory (XCE Data Collection Directory):    " DEST_DIR
+read -rep "SMILES library CSV  (e.g. LifeChem...csv) [leave blank to skip]:              " SMILES_CSV
+read -rep "Compound distribution CSV (e.g. MX3...csv) [leave blank to skip]:            " DIST_CSV
 
 # ---------------------------------------------------------------------------
 # Validate inputs
