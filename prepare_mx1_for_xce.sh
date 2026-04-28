@@ -42,8 +42,9 @@
 set -euo pipefail
 
 read -rep "Enter full path to source directory (containing MX1 processing output folders): " SOURCE_DIR
-read -rep "Enter full path to destination directory (XCE Data Collection Directory):        " DEST_DIR
-read -rep "SMILES library CSV  (e.g. LifeChem...csv) [leave blank to skip]:                    " SMILES_CSV
+read -rep "Enter full path to beamline directory (set as XCE Data Collection Directory):    " DEST_DIR
+read -rep "Target name (e.g. cRel, shown in XCE Datasets tab target dropdown):              " TARGET_NAME
+read -rep "SMILES library CSV  (e.g. LifeChem...csv) [leave blank to skip]:                 " SMILES_CSV
 read -rep "Compound distribution CSV (e.g. MX1-25795...csv) [leave blank to skip]:            " DIST_CSV
 
 # ---------------------------------------------------------------------------
@@ -54,11 +55,18 @@ if [[ ! -d "${SOURCE_DIR}" ]]; then
     exit 1
 fi
 
-mkdir -p "${DEST_DIR}"
+if [[ -z "${TARGET_NAME}" ]]; then
+    echo "ERROR: Target name cannot be empty." >&2
+    exit 1
+fi
+
+PROC_DIR="${DEST_DIR}/processed/${TARGET_NAME}"
+mkdir -p "${PROC_DIR}"
 
 echo ""
-echo "Source : ${SOURCE_DIR}"
-echo "Dest   : ${DEST_DIR}"
+echo "Source       : ${SOURCE_DIR}"
+echo "Beamline dir : ${DEST_DIR}"
+echo "Processed dir: ${PROC_DIR}"
 echo ""
 
 count=0
@@ -127,8 +135,8 @@ for crystal in $(echo "${!crystal_dirs[@]}" | tr ' ' '\n' | sort); do
         # Build XCE-compatible directory tree (symlinks into original files)
         # <DEST>/<crystal>/<run>/mx1_process/output/LogFiles|DataFiles/
         # -----------------------------------------------------------------------
-        log_dir="${DEST_DIR}/${crystal}/${run_num}/mx1_process/output/LogFiles"
-        mtz_dir="${DEST_DIR}/${crystal}/${run_num}/mx1_process/output/DataFiles"
+        log_dir="${PROC_DIR}/${crystal}/${run_num}/mx1_process/output/LogFiles"
+        mtz_dir="${PROC_DIR}/${crystal}/${run_num}/mx1_process/output/DataFiles"
         mkdir -p "${log_dir}" "${mtz_dir}"
 
         # aimless.log → LogFiles/aimless.log   (matches *aimless.log)
@@ -149,7 +157,7 @@ done
 if [[ -n "${SMILES_CSV:-}" && -n "${DIST_CSV:-}" ]]; then
     echo ""
     echo "Writing compound SMILES files..."
-    python3 - "${SMILES_CSV}" "${DIST_CSV}" "${DEST_DIR}" mx1 << 'PYEOF'
+    python3 - "${SMILES_CSV}" "${DIST_CSV}" "${PROC_DIR}" mx1 << 'PYEOF'
 import sys, csv, os, re
 
 smiles_csv, dist_csv, dest_dir, mode = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
@@ -205,6 +213,7 @@ echo ""
 echo "Prepared ${count} dataset(s), skipped ${skipped}."
 echo ""
 echo "Next steps in XCE:"
-echo "  Settings tab → Data Collection Directory = ${DEST_DIR}"
-echo "  Settings tab → Target = (your protein target name)"
-echo "  Datasets tab → 'Get New Results from Autoprocessing'"
+echo "  Settings tab -> Data Collection Directory = ${DEST_DIR}"
+echo "  Datasets tab -> Target dropdown            = ${TARGET_NAME}"
+echo "  Uncheck 'Read Agamemnon data structure' in Settings tab"
+echo "  Datasets tab -> 'Get New Results from Autoprocessing'"
