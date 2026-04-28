@@ -37,6 +37,8 @@ set -euo pipefail
 
 read -rp "Enter full path to source directory (containing fast_dp_results_* folders): " SOURCE_DIR
 read -rp "Enter full path to destination directory (XCE Data Collection Directory):    " DEST_DIR
+read -rp "SMILES library CSV  (e.g. LifeChem...csv) [leave blank to skip]:              " SMILES_CSV
+read -rp "Compound distribution CSV (e.g. MX3...csv) [leave blank to skip]:            " DIST_CSV
 
 # ---------------------------------------------------------------------------
 # Validate inputs
@@ -106,6 +108,63 @@ for src in "${SOURCE_DIR}"/fast_dp_results_*/; do
     echo "  OK  ${crystal}  (run ${run_num})  ←  ${basename}"
     (( count++ )) || true
 done
+
+# ---------------------------------------------------------------------------
+# Write compound SMILES files (only if both CSVs were provided)
+# ---------------------------------------------------------------------------
+if [[ -n "${SMILES_CSV:-}" && -n "${DIST_CSV:-}" ]]; then
+    echo ""
+    echo "Writing compound SMILES files..."
+    python3 - "${SMILES_CSV}" "${DIST_CSV}" "${DEST_DIR}" mx3 << 'PYEOF'
+import sys, csv, os, re
+
+smiles_csv, dist_csv, dest_dir, mode = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+
+# SN code → SMILES string
+smiles_map = {}
+with open(smiles_csv, newline='', encoding='utf-8-sig') as f:
+    for row in csv.DictReader(f):
+        sn = row.get('CA Sample Number', '').strip()
+        smiles = row.get('QCL_SMILES', '').strip()
+        if sn and smiles:
+            smiles_map[sn] = smiles
+
+# target_directory → SN code → crystal name
+crystal_sn = {}  # crystal → SN
+with open(dist_csv, newline='', encoding='utf-8-sig') as f:
+    for row in csv.DictReader(f):
+        sn = row.get('source_directory', '').strip()
+        target = row.get('target_directory', '').strip()
+        if not sn or not target:
+            continue
+        # Strip fast_dp_results_ prefix and -sn<digits>_<digits> suffix
+        stripped = re.sub(r'^fast_dp_results_', '', target)
+        crystal = re.sub(r'-sn\d+_\d+$', '', stripped)
+        if crystal:
+            crystal_sn[crystal] = sn
+
+written = 0
+missing = 0
+for crystal, sn in sorted(crystal_sn.items()):
+    smiles = smiles_map.get(sn)
+    if not smiles:
+        print(f'  WARNING: No SMILES found for {crystal} (SN={sn})')
+        missing += 1
+        continue
+    crystal_dir = os.path.join(dest_dir, crystal)
+    if not os.path.isdir(crystal_dir):
+        print(f'  SKIP (no dest dir): {crystal}')
+        missing += 1
+        continue
+    smi_path = os.path.join(crystal_dir, crystal + '.smi')
+    with open(smi_path, 'w') as fh:
+        fh.write(smiles + '\n')
+    print(f'  SMI  {crystal}  ← {sn}  ({smiles[:30]}...)')
+    written += 1
+
+print(f'Wrote {written} SMILES file(s), {missing} missing/skipped.')
+PYEOF
+fi
 
 # ---------------------------------------------------------------------------
 # Summary
