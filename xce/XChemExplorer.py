@@ -3688,7 +3688,7 @@ class XChemExplorer(QtGui.QApplication):
                 self.xce_logfile,
                 self.preferences["dimple_twin_mode"],
                 pipeline,
-                get_token(fetch_password_qt),
+                None  # WEHI: no SSH token needed, slurm.py uses local sbatch,
             )
             self.explorer_active = 1
             self.connect(
@@ -3874,7 +3874,7 @@ class XChemExplorer(QtGui.QApplication):
         self.datasource_menu_reload_samples()
 
         cluster_dict = XChemMain.get_jobs_running_on_cluster(
-            self.external_software, self.xce_logfile, get_token(fetch_password_qt)
+            self.external_software, self.xce_logfile, None  # WEHI: no SSH token needed, slurm.py uses local sbatch
         )
 
         self.update_log.insert("getting status updates...")
@@ -4141,7 +4141,7 @@ class XChemExplorer(QtGui.QApplication):
                 self.xce_logfile,
                 os.path.join(self.database_directory, self.data_source_file),
                 self.external_software,
-                get_token(fetch_password_qt),
+                None  # WEHI: no SSH token needed, slurm.py uses local sbatch,
             )
         else:
             self.work_thread = XChemPANDDA.run_pandda_analyse(
@@ -4149,7 +4149,7 @@ class XChemExplorer(QtGui.QApplication):
                 self.xce_logfile,
                 os.path.join(self.database_directory, self.data_source_file),
                 self.external_software,
-                get_token(fetch_password_qt),
+                None  # WEHI: no SSH token needed, slurm.py uses local sbatch,
             )
         self.connect(
             self.work_thread, QtCore.SIGNAL("finished()"), self.thread_finished
@@ -4391,7 +4391,7 @@ class XChemExplorer(QtGui.QApplication):
                 self.xce_logfile,
                 which_models,
                 pandda_params,
-                get_token(fetch_password_qt),
+                None  # WEHI: no SSH token needed, slurm.py uses local sbatch,
             )
             self.connect(
                 self.work_thread, QtCore.SIGNAL("finished()"), self.thread_finished
@@ -4407,7 +4407,7 @@ class XChemExplorer(QtGui.QApplication):
                 self.initial_model_directory,
                 self.xce_logfile,
                 which_models,
-                get_token(fetch_password_qt),
+                None  # WEHI: no SSH token needed, slurm.py uses local sbatch,
             )
             self.connect(
                 self.work_thread, QtCore.SIGNAL("finished()"), self.thread_finished
@@ -4468,7 +4468,7 @@ class XChemExplorer(QtGui.QApplication):
                 self.xce_logfile,
                 self.max_queue_jobs,
                 self.restraints_program,
-                get_token(fetch_password_qt),
+                None  # WEHI: no SSH token needed, slurm.py uses local sbatch,
             )
             self.connect(
                 self.work_thread,
@@ -4523,7 +4523,7 @@ class XChemExplorer(QtGui.QApplication):
                 self.ccp4_scratch_directory,
                 self.xce_logfile,
                 self.max_queue_jobs,
-                get_token(fetch_password_qt),
+                None  # WEHI: no SSH token needed, slurm.py uses local sbatch,
             )
             self.connect(
                 self.work_thread,

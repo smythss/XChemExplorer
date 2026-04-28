@@ -1355,16 +1355,21 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         if "FreeR_flag" in mtz_column_list:
             rfree = ' xray_data.r_free_flags.label="FreeR_flag"'
 
+        _dls_modules_phenix = (
+            "module load global/cluster\n"
+            "module load phenix/1.20\n"
+            "module load buster/20240123\n"
+            if os.path.isdir("/dls") else ""
+        )
+
         Cmds = (
             'export XChemExplorer_DIR="' + os.getenv("XChemExplorer_DIR") + '"\n'
             "\n"
             "cd %s\n"
             % os.path.join(self.initial_model_directory, xtal, "phenix.ligand_pipeline")
             + "\n"
-            "module load global/cluster\n"
-            "module load phenix/1.20\n"
-            "module load buster/20240123\n"
-            "\n" + ccp4_scratch + "\n"
+            + _dls_modules_phenix
+            + "\n" + ccp4_scratch + "\n"
             "$CCP4/bin/ccp4-python"
             " $XChemExplorer_DIR/xce/helpers/update_status_flag.py %s %s %s %s\n"
             % (
@@ -1466,15 +1471,20 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         else:
             hklref_line = " -nofreeref"
 
+        _dls_modules_pipedream = (
+            "module load global/cluster\n"
+            "module load phenix/1.20\n"
+            "module load buster/20240123\n"
+            if os.path.isdir("/dls") else ""
+        )
+
         Cmds = (
             'export XChemExplorer_DIR="' + os.getenv("XChemExplorer_DIR") + '"\n'
             "\n"
             "cd %s\n" % os.path.join(self.initial_model_directory, xtal, "pipedream")
             + "\n"
-            "module load global/cluster\n"
-            "module load phenix/1.20\n"
-            "module load buster/20240123\n"
-            "\n" + ccp4_scratch + "\n"
+            + _dls_modules_pipedream
+            + "\n" + ccp4_scratch + "\n"
             "$CCP4/bin/ccp4-python $XChemExplorer_DIR/xce/helpers/update_status_flag.py"
             " %s %s %s %s\n"
             % (
@@ -1638,16 +1648,21 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
                 .replace(" ", "")
             )
 
+        _dls_modules = (
+            "module load global/cluster\n"
+            "module load phenix/1.20\n"
+            "module load buster/20240123\n"
+            if os.path.isdir("/dls") else ""
+        )
+
         Cmds = (
             'export XChemExplorer_DIR="' + os.getenv("XChemExplorer_DIR") + '"\n'
             "\n"
             "cd %s\n"
             % os.path.join(self.initial_model_directory, xtal, "dimple%s" % twin)
             + "\n"
-            "module load global/cluster\n"
-            "module load phenix/1.20\n"
-            "module load buster/20240123\n"
-            "\n" + ccp4_scratch + "\n"
+            + _dls_modules
+            + "\n" + ccp4_scratch + "\n"
             "$CCP4/bin/ccp4-python $XChemExplorer_DIR/xce/helpers/update_status_flag.py"
             " %s %s %s %s\n"
             % (
@@ -1759,7 +1774,8 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         os.chdir(self.ccp4_scratch_directory)
         Cmds = (
             "#!/bin/bash\n"
-            + ". /etc/profile.d/modules.sh\n"
+            # Source modules.sh only if present (not available inside Apptainer at WEHI)
+            + "[ -f /etc/profile.d/modules.sh ] && . /etc/profile.d/modules.sh || true\n"
             + "./xce_{!s}{!s}_$SLURM_ARRAY_TASK_ID.sh\n".format(self.pipeline, twin)
         )
         f = open("{!s}{!s}_master.sh".format(self.pipeline, twin), "w")
