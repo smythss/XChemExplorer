@@ -72,7 +72,9 @@ for src in "${SOURCE_DIR}"/fast_dp_results_*/; do
     # -----------------------------------------------------------------------
     stripped="${basename#fast_dp_results_}"   # e.g. mpc-0020-7-sn02731467_1
 
-    crystal=$(echo "${stripped}" | sed -E 's/-sn[0-9]+_[0-9]+$//')
+    # Crystal name = first 3 dash-delimited fields (mpc-<plate>-<well>).
+    # Run number = digits after final underscore.
+    crystal=$(echo "${stripped}" | sed -E 's/^([^-]+-[^-]+-[^-]+)-.*/\1/')
     run_num=$(echo "${stripped}"  | sed -E 's/.*_([0-9]+)$/\1/')
 
     if [[ -z "${crystal}" || "${crystal}" == "${stripped}" ]]; then
@@ -130,16 +132,20 @@ with open(smiles_csv, newline='', encoding='utf-8-sig') as f:
             smiles_map[sn] = smiles
 
 # target_directory → SN code → crystal name
+# Supports two CSV formats:
+#   Format A (ASMX): columns "Name" (e.g. MPC-0019-1-SN02731452) and "Compound" (e.g. SN02731452)
+#   Format B (generic): columns "source_directory" (SN) and "target_directory" (dir name)
 crystal_sn = {}  # crystal → SN
 with open(dist_csv, newline='', encoding='utf-8-sig') as f:
     for row in csv.DictReader(f):
-        sn = row.get('source_directory', '').strip()
-        target = row.get('target_directory', '').strip()
+        sn     = (row.get('Compound') or row.get('source_directory') or '').strip()
+        target = (row.get('Name')     or row.get('target_directory') or '').strip()
         if not sn or not target:
             continue
-        # Strip fast_dp_results_ prefix and -sn<digits>_<digits> suffix
-        stripped = re.sub(r'^fast_dp_results_', '', target)
-        crystal = re.sub(r'-sn\d+_\d+$', '', stripped)
+        # Strip fast_dp_results_ prefix if present, then take first 3 dash-delimited fields
+        stripped_t = re.sub(r'^fast_dp_results_', '', target)
+        parts = stripped_t.split('-')
+        crystal = '-'.join(parts[:3]).lower() if len(parts) >= 3 else stripped_t.lower()
         if crystal:
             crystal_sn[crystal] = sn
 
