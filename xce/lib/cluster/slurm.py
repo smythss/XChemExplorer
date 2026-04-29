@@ -16,6 +16,11 @@ CLUSTER_USER = (os.environ.get("CLUSTER_USER")
                 or os.environ.get("USER")
                 or getpass.getuser())
 
+CLUSTER_BASTION = os.environ.get("CLUSTER_BASTION", "")
+CLUSTER_HOST = os.environ.get("CLUSTER_HOST", "")
+CLUSTER_PORT = int(os.environ.get("CLUSTER_PORT", "6820"))
+CLUSTER_PARTITION = os.environ.get("CLUSTER_PARTITION", "regular")
+
 TOKEN = None
 TOKEN_EXPIRY = None
 

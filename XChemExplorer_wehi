@@ -137,6 +137,23 @@ if [[ -n "${BDG_TOOL_MOGUL:-}" ]]; then
     APPTAINER_ARGS+=("--env" "BDG_TOOL_MOGUL=${BDG_TOOL_MOGUL}")
 fi
 
+# ---------------------------------------------------------------------------
+# SLURM REST API settings — required for the "Run Dimple / CTD" buttons that
+# submit jobs via the SLURM REST API inside XCE.
+#
+#   CLUSTER_BASTION   SSH login node used to obtain a SLURM token
+#                     e.g. export CLUSTER_BASTION=login.wehi.edu.au
+#   CLUSTER_HOST      SLURM REST API hostname
+#                     e.g. export CLUSTER_HOST=slurm-rest.wehi.edu.au
+#   CLUSTER_PORT      SLURM REST API port (default 6820)
+#   CLUSTER_PARTITION SLURM partition for submitted jobs (default: regular)
+# ---------------------------------------------------------------------------
+for _SLURM_VAR in CLUSTER_BASTION CLUSTER_HOST CLUSTER_PORT CLUSTER_PARTITION; do
+    if [[ -n "${!_SLURM_VAR:-}" ]]; then
+        APPTAINER_ARGS+=("--env" "${_SLURM_VAR}=${!_SLURM_VAR}")
+    fi
+done
+
 APPTAINER_ARGS+=("${SIF}" "${CCP4}/bin/ccp4-python" \
     "-c" "import sys; sys.path.insert(0, '/xce'); import runpy; runpy.run_module('xce', run_name='__main__')")
 
