@@ -142,6 +142,10 @@ if [[ -d /etc/slurm ]]; then
     BINDS="${BINDS},/etc/slurm:/etc/slurm"
 fi
 
+# Bind host passwd/group so sbatch can resolve SlurmUser and the running user
+# inside the container (the container image has no slurm system user).
+BINDS="${BINDS},/etc/passwd:/etc/passwd,/etc/group:/etc/group"
+
 CONTAINER_PATH="${CONTAINER_PATH}:/usr/local/bin:/usr/bin:/bin"
 
 # ---------------------------------------------------------------------------
