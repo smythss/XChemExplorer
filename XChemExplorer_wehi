@@ -137,6 +137,11 @@ for SLURM_ROOT in /usr/local/slurm /opt/slurm /cm/shared/apps/slurm/current; do
     fi
 done
 
+# Bind SLURM configuration so sbatch can find slurm.conf inside the container.
+if [[ -d /etc/slurm ]]; then
+    BINDS="${BINDS},/etc/slurm:/etc/slurm"
+fi
+
 CONTAINER_PATH="${CONTAINER_PATH}:/usr/local/bin:/usr/bin:/bin"
 
 # ---------------------------------------------------------------------------
