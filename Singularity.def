@@ -34,6 +34,10 @@ From: rockylinux:9
     setup.py /xce/setup.py
     setup.cfg /xce/setup.cfg
 
+%post
+    # Remove any stale Python 2 bytecode so the updated .py sources are used.
+    find /xce -name '*.pyc' -delete
+
 %environment
     # Allow Qt to work without shared memory (required for some X11 setups)
     export QT_X11_NO_MITSHM=1
