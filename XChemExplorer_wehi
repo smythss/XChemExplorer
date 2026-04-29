@@ -103,15 +103,28 @@ if [[ -n "${BDG_TOOL_MOGUL:-}" ]]; then
 fi
 
 # Expose the HPC scheduler's job-submission tools (qsub/sbatch) inside the
-# container.  On Milton, qsub is typically provided by the slurm-torque
-# compatibility package.  Bind the directory that contains qsub so XCE can
-# find it at startup.
-for SCHED_DIR in /usr/local/bin /usr/bin; do
-    QSUB_PATH="${SCHED_DIR}/qsub"
-    if [[ -x "${QSUB_PATH}" ]]; then
-        BINDS="${BINDS},${SCHED_DIR}:${SCHED_DIR}"
-        CONTAINER_PATH="${CONTAINER_PATH}:${SCHED_DIR}"
-        break
+# container.  Search common locations and also use `command -v` to find the
+# real path on the host before entering the container.
+SCHED_DIRS_ADDED=""
+for SCHED_BIN in sbatch qsub; do
+    # Try common locations first, then ask the shell
+    SCHED_PATH=$(command -v "${SCHED_BIN}" 2>/dev/null || true)
+    if [[ -z "${SCHED_PATH}" ]]; then
+        for TRY_DIR in /usr/local/bin /usr/bin /usr/local/slurm/bin \
+                       /opt/slurm/bin /cm/shared/apps/slurm/current/bin; do
+            if [[ -x "${TRY_DIR}/${SCHED_BIN}" ]]; then
+                SCHED_PATH="${TRY_DIR}/${SCHED_BIN}"
+                break
+            fi
+        done
+    fi
+    if [[ -n "${SCHED_PATH}" ]]; then
+        SCHED_BIN_DIR=$(dirname "${SCHED_PATH}")
+        if [[ "${SCHED_DIRS_ADDED}" != *":${SCHED_BIN_DIR}:"* ]]; then
+            BINDS="${BINDS},${SCHED_BIN_DIR}:${SCHED_BIN_DIR}"
+            CONTAINER_PATH="${CONTAINER_PATH}:${SCHED_BIN_DIR}"
+            SCHED_DIRS_ADDED="${SCHED_DIRS_ADDED}:${SCHED_BIN_DIR}:"
+        fi
     fi
 done
 

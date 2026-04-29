@@ -1785,9 +1785,22 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         job_name = "xce_{!s}{!s}_master".format(self.pipeline, twin)
         array_spec = "1-{!s}".format(self.n - 1)
         import subprocess
+        # Locate sbatch on PATH or common HPC locations.
+        sbatch_bin = None
+        for candidate in ["/usr/local/bin/sbatch",
+                           "/usr/bin/sbatch",
+                           "/usr/local/slurm/bin/sbatch",
+                           "/opt/slurm/bin/sbatch",
+                           "/cm/shared/apps/slurm/current/bin/sbatch"]:
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                sbatch_bin = candidate
+                break
+        if sbatch_bin is None:
+            # Rely on shell PATH
+            sbatch_bin = "sbatch"
         partition = os.environ.get("CLUSTER_PARTITION", "regular")
         sbatch_cmd = [
-            "sbatch",
+            sbatch_bin,
             "--partition", partition,
             "--job-name", job_name,
             "--array", array_spec,
