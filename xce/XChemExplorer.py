@@ -20,7 +20,6 @@ from xce.lib import (
     XChemToolTips,
 )
 from xce.lib.XChemUtils import parse
-from xce.lib.cluster.slurm import get_token, fetch_password_qt
 from xce.web import XChemWeb
 
 
