@@ -16,6 +16,16 @@ From: rockylinux:9
     org.opencontainers.image.title "XChemExplorer"
     org.opencontainers.image.description "XChemExplorer for WEHI Milton HPC — CCP4/PHENIX sourced from the host"
 
+# Copy XChemExplorer source into the container.
+# The container uses ccp4-python from the host-mounted CCP4 installation, so
+# no package compilation or egg build is required here.
+%files
+    xce /xce/xce
+    coot /xce/coot
+    launch.py /xce/launch.py
+    setup.py /xce/setup.py
+    setup.cfg /xce/setup.cfg
+
 %post
     dnf update -y \
     && dnf install -y \
@@ -30,18 +40,6 @@ From: rockylinux:9
         lz4-libs \
         libcurl \
     && dnf clean all
-
-# Copy XChemExplorer source into the container.
-# The container uses ccp4-python from the host-mounted CCP4 installation, so
-# no package compilation or egg build is required here.
-%files
-    xce /xce/xce
-    coot /xce/coot
-    launch.py /xce/launch.py
-    setup.py /xce/setup.py
-    setup.cfg /xce/setup.cfg
-
-%post
     # Remove any stale Python 2 bytecode so the updated .py sources are used.
     find /xce -name '*.pyc' -delete
 
