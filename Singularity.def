@@ -31,7 +31,9 @@ From: rockylinux:9
 
     # Enable EPEL (required for munge and other SLURM deps)
     dnf install -y epel-release
-    dnf install -y \
+    # --allowerasing lets dnf replace libcurl-minimal (pre-installed in Rocky 9
+    # base image) with the full libcurl, which conflicts with it.
+    dnf install -y --allowerasing \
         libXrender fontconfig libXext \
         glib2 libSM libXi libXrandr libXfixes libXcursor libXinerama \
         libgomp libXdamage libxcb \
