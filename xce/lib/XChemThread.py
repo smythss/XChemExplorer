@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import csv
 import glob
 import math
@@ -1797,7 +1798,7 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         partition = os.environ.get("CLUSTER_PARTITION", "regular")
         stdout_log = os.path.join(self.ccp4_scratch_directory, job_name + ".stdout")
         stderr_log = os.path.join(self.ccp4_scratch_directory, job_name + ".stderr")
-        # Use os.system() — subprocess pipe creation fails inside Apptainer
+        # Use os.system() - subprocess pipe creation fails inside Apptainer
         # on some kernels with restricted namespaces (ENOTCONN).
         sbatch_cmd = (
             "{sbatch} --partition {partition} --job-name {job_name}"
