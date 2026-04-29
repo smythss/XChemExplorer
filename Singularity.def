@@ -40,6 +40,9 @@ From: rockylinux:9
         lz4-libs \
         libcurl \
     && dnf clean all
+    # Re-run ldconfig so all .so symlinks and the cache are created correctly.
+    # In --fakeroot builds the package scriptlets can skip this step.
+    ldconfig
     # Remove any stale Python 2 bytecode so the updated .py sources are used.
     find /xce -name '*.pyc' -delete
 
