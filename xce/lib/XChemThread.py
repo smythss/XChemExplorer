@@ -1350,6 +1350,21 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         if os.path.isdir("/dls"):
             ccp4_scratch += "module load phenix/1.20\n"
             ccp4_scratch += "module load ccp4/7.1.018\n"
+        else:
+            ccp4_scratch += (
+                "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+                ": \"${CCP4:=$CCP4_WEHI}\"\n"
+                "export CCP4\n"
+                "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
+                "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
+                "else\n"
+                "    export CCP4_MASTER=\"$CCP4\"\n"
+                "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
+                "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
+                "    export CLIBD=\"$CCP4/lib/data\"\n"
+                "    export CLIB=\"$CCP4/lib\"\n"
+                "fi\n"
+            )
 
         mtz_column_list = XChemUtils.mtztools(mtzin).get_all_columns_as_list()
         rfree = ""
@@ -1466,6 +1481,21 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         if os.path.isdir("/dls"):
             ccp4_scratch += "module load buster/20240123\n"
             ccp4_scratch += "module load ccp4/7.1.018\n"
+        else:
+            ccp4_scratch += (
+                "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+                ": \"${CCP4:=$CCP4_WEHI}\"\n"
+                "export CCP4\n"
+                "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
+                "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
+                "else\n"
+                "    export CCP4_MASTER=\"$CCP4\"\n"
+                "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
+                "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
+                "    export CLIBD=\"$CCP4/lib/data\"\n"
+                "    export CLIB=\"$CCP4/lib\"\n"
+                "fi\n"
+            )
 
         if os.path.isfile(ref_mtz):
             hklref_line = " -hklref {0!s}".format(ref_mtz)
@@ -1623,6 +1653,23 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
 
         if os.path.isdir("/dls"):
             ccp4_scratch += "module load ccp4/7.1.018\n"
+        else:
+            # WEHI Milton: CCP4 is a fixed-path install, no lmod modules.
+            # Source ccp4.setup-sh so all CCP4 programs can find environ.def.
+            ccp4_scratch += (
+                "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+                ": \"${CCP4:=$CCP4_WEHI}\"\n"
+                "export CCP4\n"
+                "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
+                "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
+                "else\n"
+                "    export CCP4_MASTER=\"$CCP4\"\n"
+                "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
+                "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
+                "    export CLIBD=\"$CCP4/lib/data\"\n"
+                "    export CLIB=\"$CCP4/lib\"\n"
+                "fi\n"
+            )
 
         hkl = any_reflection_file(file_name=mtzin)
         miller_arrays = hkl.as_miller_arrays()
