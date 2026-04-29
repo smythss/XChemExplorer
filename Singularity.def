@@ -22,6 +22,13 @@ From: rockylinux:9
         libXrender fontconfig libXext \
         glib2 libSM libXi libXrandr libXfixes libXcursor libXinerama \
         libgomp libXdamage libxcb \
+        munge \
+        libyaml \
+        json-c \
+        http-parser \
+        lua-libs \
+        lz4-libs \
+        libcurl \
     && dnf clean all
 
 # Copy XChemExplorer source into the container.
