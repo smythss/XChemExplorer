@@ -29,6 +29,8 @@ From: rockylinux:9
 %post
     set -e
 
+    # Enable EPEL (required for munge and other SLURM deps)
+    dnf install -y epel-release
     dnf install -y \
         libXrender fontconfig libXext \
         glib2 libSM libXi libXrandr libXfixes libXcursor libXinerama \
@@ -36,7 +38,6 @@ From: rockylinux:9
         munge \
         libyaml \
         json-c \
-        http-parser \
         lua-libs \
         lz4-libs \
         libcurl
