@@ -27,8 +27,9 @@ From: rockylinux:9
     setup.cfg /xce/setup.cfg
 
 %post
-    dnf update -y \
-    && dnf install -y \
+    set -e
+
+    dnf install -y \
         libXrender fontconfig libXext \
         glib2 libSM libXi libXrandr libXfixes libXcursor libXinerama \
         libgomp libXdamage libxcb \
@@ -38,11 +39,14 @@ From: rockylinux:9
         http-parser \
         lua-libs \
         lz4-libs \
-        libcurl \
-    && dnf clean all
+        libcurl
+
+    dnf clean all
+
     # Re-run ldconfig so all .so symlinks and the cache are created correctly.
     # In --fakeroot builds the package scriptlets can skip this step.
     ldconfig
+
     # Remove any stale Python 2 bytecode so the updated .py sources are used.
     find /xce -name '*.pyc' -delete
 
