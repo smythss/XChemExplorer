@@ -141,6 +141,29 @@ class SettingsTab:
             )
         )
 
+        xce_object.data_collection_vbox_for_settings.addWidget(
+            QtGui.QLabel("\n\n<b>Collection Summary File: - OPTIONAL -</b>")
+        )
+        settings_summary_frame = QtGui.QFrame()
+        settings_summary_frame.setFrameShape(QtGui.QFrame.StyledPanel)
+        settings_summary_vbox = QtGui.QVBoxLayout()
+        settings_hbox_summary = QtGui.QHBoxLayout()
+        xce_object.datasets_summary_file_label = QtGui.QLabel(
+            xce_object.datasets_summary_file
+        )
+        settings_hbox_summary.addWidget(xce_object.datasets_summary_file_label)
+        for btn_text in (
+            "Select Existing\nCollection Summary File",
+            "Assign New\nCollection Summary File",
+        ):
+            btn = QtGui.QPushButton(btn_text)
+            btn.setMaximumWidth(500)
+            btn.clicked.connect(xce_object.settings_button_clicked)
+            settings_hbox_summary.addWidget(btn)
+        settings_summary_vbox.addLayout(settings_hbox_summary)
+        settings_summary_frame.setLayout(settings_summary_vbox)
+        xce_object.data_collection_vbox_for_settings.addWidget(settings_summary_frame)
+
         xce_object.data_collection_vbox_for_settings.setContentsMargins(30, 30, 30, 30)
 
         xce_object.buttons_etc.resize(

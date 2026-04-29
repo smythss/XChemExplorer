@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import ssl
 import json
@@ -127,6 +128,30 @@ def submit_cluster_job(
     body = json.dumps(payload)
     logfile = updateLog(xce_logfile)
     logfile.insert("Submitting job, '{}', to Slurm with body: {}".format(name, body))
+
+    if not CLUSTER_HOST:
+        # No REST API configured - fall back to plain sbatch (e.g. WEHI Milton).
+        import subprocess
+        sbatch_cmd = ["sbatch"]
+        sbatch_cmd += ["--partition", CLUSTER_PARTITION]
+        sbatch_cmd += ["--job-name", str(name)]
+        sbatch_cmd += ["--account", CLUSTER_USER]
+        sbatch_cmd += ["--output", os.path.join(os.getcwd(), "{}.stdout".format(name))]
+        sbatch_cmd += ["--error",  os.path.join(os.getcwd(), "{}.stderr".format(name))]
+        if array is not None:
+            sbatch_cmd += ["--array", str(array)]
+        if exclusive:
+            sbatch_cmd += ["--exclusive"]
+        if memory is not None:
+            sbatch_cmd += ["--mem", str(memory)]
+        if tasks is not None:
+            sbatch_cmd += ["--ntasks-per-node", str(tasks)]
+        sbatch_cmd.append(file)
+        logfile.insert("No CLUSTER_HOST set; submitting via sbatch: {}".format(" ".join(sbatch_cmd)))
+        result = subprocess.check_output(sbatch_cmd, stderr=subprocess.STDOUT)
+        logfile.insert("sbatch response: {}".format(result.strip()))
+        return
+
     connection = httplib.HTTPSConnection(
         CLUSTER_HOST, CLUSTER_PORT, context=ssl._create_unverified_context()
     )
