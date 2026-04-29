@@ -1784,33 +1784,24 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         f.close()
         job_name = "xce_{!s}{!s}_master".format(self.pipeline, twin)
         array_spec = "1-{!s}".format(self.n - 1)
-        if not os.environ.get("CLUSTER_HOST", ""):
-            import subprocess
-            partition = os.environ.get("CLUSTER_PARTITION", "regular")
-            sbatch_cmd = [
-                "sbatch",
-                "--partition", partition,
-                "--job-name", job_name,
-                "--array", array_spec,
-                "--output", os.path.join(self.ccp4_scratch_directory, job_name + ".stdout"),
-                "--error",  os.path.join(self.ccp4_scratch_directory, job_name + ".stderr"),
-                master_script,
-            ]
-            self.Logfile.insert("Submitting via sbatch: " + " ".join(sbatch_cmd))
-            try:
-                result = subprocess.check_output(sbatch_cmd, stderr=subprocess.STDOUT)
-                self.Logfile.insert("sbatch response: " + result.strip())
-            except subprocess.CalledProcessError as exc:
-                self.Logfile.insert("sbatch failed: " + exc.output)
-                raise
-        else:
-            slurm.submit_cluster_job(
-                job_name,
-                master_script,
-                self.xce_logfile,
-                self.slurm_token,
-                array=array_spec,
-            )
+        import subprocess
+        partition = os.environ.get("CLUSTER_PARTITION", "regular")
+        sbatch_cmd = [
+            "sbatch",
+            "--partition", partition,
+            "--job-name", job_name,
+            "--array", array_spec,
+            "--output", os.path.join(self.ccp4_scratch_directory, job_name + ".stdout"),
+            "--error",  os.path.join(self.ccp4_scratch_directory, job_name + ".stderr"),
+            master_script,
+        ]
+        self.Logfile.insert("Submitting via sbatch: " + " ".join(sbatch_cmd))
+        try:
+            result = subprocess.check_output(sbatch_cmd, stderr=subprocess.STDOUT)
+            self.Logfile.insert("sbatch response: " + result.strip())
+        except subprocess.CalledProcessError as exc:
+            self.Logfile.insert("sbatch failed: " + exc.output)
+            raise
 
 
 class remove_selected_dimple_files(QtCore.QThread):
