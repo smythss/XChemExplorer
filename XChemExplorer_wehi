@@ -128,6 +128,15 @@ for SCHED_BIN in sbatch qsub; do
     fi
 done
 
+# Bind the SLURM installation tree so sbatch can load libslurmfull.so and
+# other shared libraries inside the container.
+for SLURM_ROOT in /usr/local/slurm /opt/slurm /cm/shared/apps/slurm/current; do
+    if [[ -d "${SLURM_ROOT}" ]]; then
+        BINDS="${BINDS},${SLURM_ROOT}:${SLURM_ROOT}"
+        break
+    fi
+done
+
 CONTAINER_PATH="${CONTAINER_PATH}:/usr/local/bin:/usr/bin:/bin"
 
 # ---------------------------------------------------------------------------
