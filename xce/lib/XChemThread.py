@@ -1026,6 +1026,7 @@ class fit_ligands(QtCore.QThread):
 
         cmd = (
             'export XChemExplorer_DIR="' + os.getenv("XChemExplorer_DIR") + '"\n'
+            'export PYTHONPATH="$XChemExplorer_DIR${PYTHONPATH:+:${PYTHONPATH}}"\n'
             "\n"
             "cd %s\n"
             % os.path.join(self.initial_model_directory, sampleID, "autofit_ligand")
@@ -1380,6 +1381,7 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
 
         Cmds = (
             'export XChemExplorer_DIR="' + os.getenv("XChemExplorer_DIR") + '"\n'
+            'export PYTHONPATH="$XChemExplorer_DIR${PYTHONPATH:+:${PYTHONPATH}}"\n'
             "\n"
             "cd %s\n"
             % os.path.join(self.initial_model_directory, xtal, "phenix.ligand_pipeline")
@@ -1511,6 +1513,7 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
 
         Cmds = (
             'export XChemExplorer_DIR="' + os.getenv("XChemExplorer_DIR") + '"\n'
+            'export PYTHONPATH="$XChemExplorer_DIR${PYTHONPATH:+:${PYTHONPATH}}"\n'
             "\n"
             "cd %s\n" % os.path.join(self.initial_model_directory, xtal, "pipedream")
             + "\n"
@@ -1705,6 +1708,7 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
 
         Cmds = (
             'export XChemExplorer_DIR="' + os.getenv("XChemExplorer_DIR") + '"\n'
+            'export PYTHONPATH="$XChemExplorer_DIR${PYTHONPATH:+:${PYTHONPATH}}"\n'
             "\n"
             "cd %s\n"
             % os.path.join(self.initial_model_directory, xtal, "dimple%s" % twin)
