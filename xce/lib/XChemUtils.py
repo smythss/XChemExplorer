@@ -299,7 +299,7 @@ class helpers:
             'export XChemExplorer_DIR="' + os.getenv("XChemExplorer_DIR") + '"' + "\n"
             'export PYTHONPATH="$XChemExplorer_DIR${PYTHONPATH:+:${PYTHONPATH}}"\n'
             + ccp4_setup
-            "$CCP4/bin/ccp4-python $XChemExplorer_DIR/xce/helpers/update_status_flag.py"
+            + "$CCP4/bin/ccp4-python $XChemExplorer_DIR/xce/helpers/update_status_flag.py"
             " {0!s} {1!s} {2!s} {3!s}".format(
                 os.path.join(database_directory, data_source_file),
                 sample,
