@@ -179,7 +179,6 @@ class helpers:
 
             software = ""
             if restraints_program == "acedrg":
-                software += "module load ccp4/7.1.018\n"
                 if os.path.isfile(
                     os.path.join(initial_model_directory, sample, "old.cif")
                 ):
@@ -191,7 +190,6 @@ class helpers:
                         productSmiles, compoundID.replace(" ", "")
                     )
             elif restraints_program == "phenix.elbow":
-                software += "module load ccp4/7.1.018\n"
                 software += "module load phenix/1.20\n"
                 if os.path.isfile(
                     os.path.join(initial_model_directory, sample, "old.cif")
@@ -209,7 +207,6 @@ class helpers:
                     )
 
             elif restraints_program == "grade":
-                software += "module load ccp4/7.1.018\n"
                 software += "module load buster/20240123\n"
                 software += (
                     "export BDG_TOOL_MOGUL="
@@ -237,7 +234,6 @@ class helpers:
                     )
 
             elif restraints_program == "grade2":
-                software += "module load ccp4/7.1.018\n"
                 software += "module load buster/20250717\n"
                 software += (
                     "export CSDHOME=/dls_sw/apps/CSDS/2024.1.0\n"
@@ -284,10 +280,25 @@ class helpers:
         # With hydrogens some ligands fail to pass the external restraints in
         # pandda.giant.make_restraints.
         # Copy the file with hydrogens to retain in case needed
+        ccp4_setup = (
+            "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+            ": \"${CCP4:=$CCP4_WEHI}\"\n"
+            "export CCP4\n"
+            "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
+            "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
+            "else\n"
+            "    export CCP4_MASTER=\"$CCP4\"\n"
+            "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
+            "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
+            "    export CLIBD=\"$CCP4/lib/data\"\n"
+            "    export CLIB=\"$CCP4/lib\"\n"
+            "fi\n"
+        )
         Cmds = (
             header + "\n"
             'export XChemExplorer_DIR="' + os.getenv("XChemExplorer_DIR") + '"' + "\n"
-            "module load ccp4/7.1.018\n"
+            'export PYTHONPATH="$XChemExplorer_DIR${PYTHONPATH:+:${PYTHONPATH}}"\n'
+            + ccp4_setup
             "$CCP4/bin/ccp4-python $XChemExplorer_DIR/xce/helpers/update_status_flag.py"
             " {0!s} {1!s} {2!s} {3!s}".format(
                 os.path.join(database_directory, data_source_file),

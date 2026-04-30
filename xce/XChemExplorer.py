@@ -4493,7 +4493,7 @@ class XChemExplorer(QtGui.QApplication):
         tmp = self.db.execute_statement(
             "select CrystalName,CompoundCode,CompoundSmiles from mainTable where"
             " CrystalName is not '' and CompoundSmiles is not '' and CompoundSmiles"
-            " is not NULL;"
+            " is not NULL and CompoundSmiles != 'None';"
         )
         compound_list = []
         for item in tmp:

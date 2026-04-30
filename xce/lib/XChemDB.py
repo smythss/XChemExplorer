@@ -970,7 +970,7 @@ class data_source:
         if removeKey != "":
             del data_dict[removeKey]
 
-        connect = sqlite3.connect(self.data_source_file)
+        connect = sqlite3.connect(self.data_source_file, timeout=30)
         cursor = connect.cursor()
         update_string = ""
         for key in data_dict:
