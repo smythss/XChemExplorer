@@ -4,9 +4,7 @@ import sys
 from iotbx import mtz
 
 if __name__ == "__main__":
-    sys.path.insert(
-        0, os.path.join(os.environ["XChemExplorer_DIR"], "dist", "xce-2.0.1-py2.7.egg")
-    )
+    sys.path.insert(0, os.environ["XChemExplorer_DIR"])
     from xce.lib import XChemDB
     from xce.lib.XChemUtils import parse
 

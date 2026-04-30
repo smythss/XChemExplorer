@@ -198,9 +198,7 @@ def convert_mean_map_to_mtz(emap, mtz):
 
 
 if __name__ == "__main__":
-    sys.path.insert(
-        0, os.path.join(os.environ["XChemExplorer_DIR"], "dist", "xce-2.0.1-py2.7.egg")
-    )
+    sys.path.insert(0, os.environ["XChemExplorer_DIR"])
     from xce.lib.XChemUtils import mtztools, parse
 
     panddaDir = sys.argv[1]

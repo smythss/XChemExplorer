@@ -9,9 +9,7 @@ def update_data_source(db_file, xtal, db_column, status):
 
 
 if __name__ == "__main__":
-    sys.path.insert(
-        0, os.path.join(os.environ["XChemExplorer_DIR"], "dist", "xce-2.0.1-py2.7.egg")
-    )
+    sys.path.insert(0, os.environ["XChemExplorer_DIR"])
     from xce.lib import XChemDB
 
     db_file = sys.argv[1]
