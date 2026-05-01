@@ -99,6 +99,14 @@ def submit_cluster_job(
 ):
     with open(file) as script_file:
         script = "\n".join(script_file.readlines())
+    # After reading the file, before building the payload / sbatch call
+    MODULE_LOADS = (
+        "module load ccp4/7.1\n"
+        "module load pymol\n"
+        "module load phenix\n"
+        "module load python\n"
+    )
+    script = script.replace("#!/bin/bash\n", "#!/bin/bash\n" + MODULE_LOADS, 1)
     payload = dict(
         script=script,
         job=dict(

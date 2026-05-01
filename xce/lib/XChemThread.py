@@ -958,8 +958,12 @@ class create_png_and_cif_of_compound(QtCore.QThread):
         if counter > 1:
             Cmds = (
                 "#!/bin/bash\n"
-                + ". /etc/profile.d/modules.sh\n"
-                + "./xce_{}_$SLURM_ARRAY_TASK_ID.sh\n".format(self.restraints_program)
+                + "[ -f /etc/profile.d/modules.sh ] && . /etc/profile.d/modules.sh || true\n"
+                + "module load ccp4/7.1\n"
+                + "module load pymol\n"
+                + "module load phenix\n"
+                + "module load python\n"
+                + "./xce_{!s}{!s}_$SLURM_ARRAY_TASK_ID.sh\n".format(self.pipeline, twin)
             )
             f = open("%s_master.sh" % self.restraints_program, "w")
             f.write(Cmds)
@@ -1122,7 +1126,7 @@ class fit_ligands(QtCore.QThread):
         os.chdir(self.ccp4_scratch_directory)
         Cmds = (
             "#!/bin/bash\n"
-            + ". /etc/profile.d/modules.sh\n"
+            + "[ -f /etc/profile.d/modules.sh ] && . /etc/profile.d/modules.sh || true\n"
             + "./xce_autofit_ligand_$SLURM_ARRAY_TASK_ID.sh\n"
         )
         f = open("autofit_ligand_master.sh", "w")
@@ -1352,6 +1356,8 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
             ccp4_scratch += "module load phenix/1.20\n"
             ccp4_scratch += "module load ccp4/7.1.018\n"
         else:
+            # WEHI Milton: CCP4 is a fixed-path install, no load modules.
+            # Source ccp4.setup-sh so all CCP4 programs can find environ.def.
             ccp4_scratch += (
                 "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
                 ": \"${CCP4:=$CCP4_WEHI}\"\n"
@@ -1484,6 +1490,8 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
             ccp4_scratch += "module load buster/20240123\n"
             ccp4_scratch += "module load ccp4/7.1.018\n"
         else:
+            # WEHI Milton: CCP4 is a fixed-path install, no lmod modules.
+            # Source ccp4.setup-sh so all CCP4 programs can find environ.def.
             ccp4_scratch += (
                 "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
                 ": \"${CCP4:=$CCP4_WEHI}\"\n"
@@ -1582,14 +1590,15 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         f = open("xce_{0!s}_{1!s}.sh".format(self.pipeline, str(self.n)), "w")
         f.write(Cmds)
         f.close()
-        os.system("chmod +x xce_{0!s}_{1!s}.sh".format(self.pipeline, str(self.n)))
+        os.system(
+            "chmod +x xce_{0!s}_{1!s}.sh".format(self.pipeline, str(self.n))
+        )
         self.n += 1
         db_dict = {"DimpleStatus": "started"}
         self.Logfile.insert(
             "{0!s}: setting DataProcessingStatus flag to started".format(xtal)
         )
         self.db.update_data_source(xtal, db_dict)
-        twin = ""
         return twin
 
     def prepare_dimple_shell_script(
@@ -2182,6 +2191,7 @@ class start_pandda_inspect(QtCore.QThread):
         )
         os.system(Cmds)
 
+
 class start_pandda_2_inspect(QtCore.QThread):
     def __init__(self, settings, xce_logfile):
         QtCore.QThread.__init__(self)
@@ -2706,14 +2716,14 @@ class read_write_autoprocessing_results_from_to_disc(QtCore.QThread):
                 os.path.join("LogFiles", "*aimless.log"),
                 os.path.join("DataFiles", "*free.mtz"),
             ],
-            [os.path.join("autoPROC"), "*aimless.log", "*truncate-unique.mtz"],
+            [os.path.join("autoPROC"), "*aimless.log", "*truncate-unique.mtz"),
             [
                 os.path.join("autoPROC"),
                 # staraniso_alldata-unique.table1 only available in tar archive
                 "*summary.tar.gz",
                 "*staraniso_alldata-unique.mtz",
             ],
-            [os.path.join("autoPROC-*"), "*aimless.log", "*truncate-unique.mtz"],
+            [os.path.join("autoPROC-*"), "*aimless.log", "*truncate-unique.mtz"),
             [
                 os.path.join("autoPROC-*"),
                 "*summary.tar.gz",
