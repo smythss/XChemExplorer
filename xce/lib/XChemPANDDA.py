@@ -1177,18 +1177,12 @@ class run_pandda_analyse(QtCore.QThread):
             else:
                 dls = (
                     source_file + "\n"
-                    "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
-                    ": \"${CCP4:=$CCP4_WEHI}\"\n"
-                    "export CCP4\n"
-                    "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
-                    "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
-                    "else\n"
-                    "    export CCP4_MASTER=\"$CCP4\"\n"
-                    "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
-                    "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
-                    "    export CLIBD=\"$CCP4/lib/data\"\n"
-                    "    export CLIB=\"$CCP4/lib\"\n"
-                    "fi\n"
+                    # Use CCP4 7.0 for pandda.sh only — avoids a pandas join bug in
+                    # the 7.1-bundled PanDDA that causes write_output_csvs to crash.
+                    # All other XCE operations continue to use the 7.1 installation
+                    # bound into the container via XChemExplorer_wehi.
+                    "export CCP4=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.0\n"
+                    ". \"$CCP4/bin/ccp4.setup-sh\"\n"
                     "module load pymol\n\n"
                 )
 
