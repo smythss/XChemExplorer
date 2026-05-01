@@ -517,6 +517,27 @@ class Refine(object):
             cmd += "module load phenix/1.20\n"
             cmd += "module load buster/20240123\n"
             cmd += "module load graphviz\n"
+        else:
+            cmd += "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+            cmd += ": \"${CCP4:=$CCP4_WEHI}\"\n"
+            cmd += "export CCP4\n"
+            cmd += "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
+            cmd += "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
+            cmd += "else\n"
+            cmd += "    export CCP4_MASTER=\"$CCP4\"\n"
+            cmd += "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
+            cmd += "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
+            cmd += "    export CLIBD=\"$CCP4/lib/data\"\n"
+            cmd += "    export CLIB=\"$CCP4/lib\"\n"
+            cmd += "fi\n"
+            cmd += "PHENIX_WEHI=/stornext/System/data/software/rhel/9/base/structbio/phenix/1.21.2-5419\n"
+            cmd += ": \"${PHENIX:=$PHENIX_WEHI}\"\n"
+            cmd += "export PHENIX\n"
+            cmd += "if [ -f \"$PHENIX/phenix_env.sh\" ]; then\n"
+            cmd += "    . \"$PHENIX/phenix_env.sh\"\n"
+            cmd += "else\n"
+            cmd += "    export PATH=\"$PHENIX/build/bin:${PATH:-}\"\n"
+            cmd += "fi\n"
         return cmd
 
     def get_source_line(self, cmd):
@@ -575,7 +596,7 @@ class Refine(object):
                 + "/Refine_"
                 + cycle
                 + "\n"
-                + "module load ccp4/7.1.018\n"
+                + ("module load ccp4/7.1.018\n" if self.ProjectPath.startswith("/dls") else "")
                 + "giant.score_model "
                 " pdb1=../%s-pandda-model.pdb " % self.xtalID + " mtz1=../dimple.mtz "
                 " pdb2=refine.pdb "
@@ -1070,9 +1091,34 @@ class Refine(object):
             + 'export XChemExplorer_DIR="'
             + os.getenv("XChemExplorer_DIR")
             + '"\n'
-            + "module load phenix/1.20\n"
-            + "module load buster/20240123\n"
-            + "module load ccp4\n"
+            + (
+                "module load phenix/1.20\n"
+                "module load buster/20240123\n"
+                "module load ccp4\n"
+                if self.ProjectPath.startswith("/dls")
+                else (
+                    "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+                    ": \"${CCP4:=$CCP4_WEHI}\"\n"
+                    "export CCP4\n"
+                    "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
+                    "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
+                    "else\n"
+                    "    export CCP4_MASTER=\"$CCP4\"\n"
+                    "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
+                    "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
+                    "    export CLIBD=\"$CCP4/lib/data\"\n"
+                    "    export CLIB=\"$CCP4/lib\"\n"
+                    "fi\n"
+                    "PHENIX_WEHI=/stornext/System/data/software/rhel/9/base/structbio/phenix/1.21.2-5419\n"
+                    ": \"${PHENIX:=$PHENIX_WEHI}\"\n"
+                    "export PHENIX\n"
+                    "if [ -f \"$PHENIX/phenix_env.sh\" ]; then\n"
+                    "    . \"$PHENIX/phenix_env.sh\"\n"
+                    "else\n"
+                    "    export PATH=\"$PHENIX/build/bin:${PATH:-}\"\n"
+                    "fi\n"
+                )
+            )
             + "cd "
             + self.ProjectPath
             + "/"
@@ -1607,8 +1653,17 @@ class panddaRefine(object):
             )
             cmd = (
                 'export XChemExplorer_DIR="%s"\n' % os.getenv("XChemExplorer_DIR")
-                + "module load buster/20240123\n"
-                + "module load ccp4/7.1.018\n"
+                + (
+                    "module load buster/20240123\n"
+                    "module load ccp4/7.1.018\n"
+                    if self.ProjectPath.startswith("/dls")
+                    else (
+                        "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+                        ": \"${CCP4:=$CCP4_WEHI}\"\n"
+                        "export CCP4\n"
+                        "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then . \"$CCP4/bin/ccp4.setup-sh\"; fi\n"
+                    )
+                )
                 + "giant.make_restraints %s-ensemble-model.pdb" % self.xtalID
             )
             Logfile.insert(cmd + "\n")
@@ -1937,6 +1992,29 @@ class panddaRefine(object):
         if os.getcwd().startswith("/dls"):
             module_load = "module load ccp4/7.1.018\n"
             module_load += "module load phenix/1.20\n"
+        else:
+            module_load = (
+                "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+                ": \"${CCP4:=$CCP4_WEHI}\"\n"
+                "export CCP4\n"
+                "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
+                "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
+                "else\n"
+                "    export CCP4_MASTER=\"$CCP4\"\n"
+                "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
+                "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
+                "    export CLIBD=\"$CCP4/lib/data\"\n"
+                "    export CLIB=\"$CCP4/lib\"\n"
+                "fi\n"
+                "PHENIX_WEHI=/stornext/System/data/software/rhel/9/base/structbio/phenix/1.21.2-5419\n"
+                ": \"${PHENIX:=$PHENIX_WEHI}\"\n"
+                "export PHENIX\n"
+                "if [ -f \"$PHENIX/phenix_env.sh\" ]; then\n"
+                "    . \"$PHENIX/phenix_env.sh\"\n"
+                "else\n"
+                "    export PATH=\"$PHENIX/build/bin:${PATH:-}\"\n"
+                "fi\n"
+            )
 
         # 2017-07-20: for the time being this will explicitly source pandda since
         # version 0.2 really only works at DLS
@@ -2086,8 +2164,8 @@ class panddaRefine(object):
             "\n" + spider_plot + "\n"
             "phenix.molprobity refine_%s.pdb refine_%s.mtz\n" % (Serial, Serial)
             + "/bin/mv molprobity.out refine_molprobity.log\n"
-            "module load phenix/1.20\n"
-            "mmtbx.validate_ligands refine_%s.pdb refine_%s.mtz LIG"
+            + ("module load phenix/1.20\n" if os.getcwd().startswith("/dls") else "")
+            + "mmtbx.validate_ligands refine_%s.pdb refine_%s.mtz LIG"
             " > validate_ligands.txt\n" % (Serial, Serial)
             + "cd "
             + self.ProjectPath
