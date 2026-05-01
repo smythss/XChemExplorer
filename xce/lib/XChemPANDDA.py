@@ -1080,8 +1080,24 @@ class run_pandda_analyse(QtCore.QThread):
             if os.path.isdir(self.panddas_directory):
                 os.system("/bin/rm -fr %s" % self.panddas_directory)
             os.mkdir(self.panddas_directory)
+            _ccp4_wehi = (
+                "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+                ": \"${CCP4:=$CCP4_WEHI}\"\n"
+                "export CCP4\n"
+                "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
+                "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
+                "else\n"
+                "    export CCP4_MASTER=\"$CCP4\"\n"
+                "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
+                "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
+                "    export CLIBD=\"$CCP4/lib/data\"\n"
+                "    export CLIB=\"$CCP4/lib\"\n"
+                "fi\n"
+            )
             if self.data_directory.startswith("/dls"):
                 self.select_ground_state_model = "module load ccp4/7.1.018\n"
+            else:
+                self.select_ground_state_model = _ccp4_wehi
             self.select_ground_state_model += "$CCP4/bin/ccp4-python %s %s\n" % (
                 os.path.join(
                     os.getenv("XChemExplorer_DIR"),
@@ -1157,6 +1173,22 @@ class run_pandda_analyse(QtCore.QThread):
                     source_file + "\n"
                     "module load pymol/1.8.2.0-py2.7\n"
                     "module load ccp4/7.0.078\n\n"
+                )
+            else:
+                dls = (
+                    source_file + "\n"
+                    "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+                    ": \"${CCP4:=$CCP4_WEHI}\"\n"
+                    "export CCP4\n"
+                    "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
+                    "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
+                    "else\n"
+                    "    export CCP4_MASTER=\"$CCP4\"\n"
+                    "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
+                    "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
+                    "    export CLIBD=\"$CCP4/lib/data\"\n"
+                    "    export CLIB=\"$CCP4/lib\"\n"
+                    "fi\n\n"
                 )
 
             Cmds = (
@@ -1306,7 +1338,7 @@ class run_pandda_analyse(QtCore.QThread):
                     self.slurm_token,
                     exclusive=True,
                     tasks=self.nproc,
-                    memory=100 * 1024,
+                    memory=16 * 1024,
                 )
 
         self.emit(QtCore.SIGNAL("datasource_menu_reload_samples"))

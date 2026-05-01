@@ -42,7 +42,13 @@ From: rockylinux:9
         json-c \
         lua-libs \
         lz4-libs \
-        libcurl
+        libcurl \
+        libxcrypt-compat \
+        mesa-libGL \
+        mesa-libGLU \
+        libXt \
+        libXmu \
+        libXxf86vm
 
     dnf clean all
 
