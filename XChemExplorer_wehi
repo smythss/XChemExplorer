@@ -169,7 +169,7 @@ APPTAINER_ARGS=(
     "--env" "PATH=${CONTAINER_PATH}"
     "--env" "CCP4=${CCP4}"
     "--env" "XChemExplorer_DIR=${XCE_HOST_DIR}"
-    "--env" "PYTHONPATH=/xce${PYTHONPATH:+:${PYTHONPATH}}"
+    "--env" "PYTHONPATH=${XCE_HOST_DIR}:/xce${PYTHONPATH:+:${PYTHONPATH}}"
 )
 
 if [[ -d "${PHENIX:-}" ]]; then
