@@ -1188,7 +1188,8 @@ class run_pandda_analyse(QtCore.QThread):
                     "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
                     "    export CLIBD=\"$CCP4/lib/data\"\n"
                     "    export CLIB=\"$CCP4/lib\"\n"
-                    "fi\n\n"
+                    "fi\n"
+                    "module load pymol\n\n"
                 )
 
             Cmds = (

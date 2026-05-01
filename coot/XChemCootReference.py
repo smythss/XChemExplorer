@@ -115,9 +115,9 @@ class GUI(object):
         # --- PDB file selection ---
         # checking for pdb files in reference directory
         referenceFiles = []
-        for files in glob.glob(
-            os.path.join(self.reference_directory, "*-ground-state.pdb")
-        ):
+        for files in sorted(glob.glob(
+            os.path.join(self.reference_directory, "*.pdb")
+        )):
             pdbFile = files[files.rfind("/") + 1 :]
             referenceFiles.append(pdbFile)
         frame = gtk.Frame(label="Select PDB file")
@@ -512,6 +512,9 @@ class GUI(object):
 
     def load_pdb_file(self, widget):
         pdbRoot = self.cb_select_pdb.get_active_text()
+        if pdbRoot is None:
+            self.Logfile.error("no PDB file selected")
+            return None
         if self.pdbFile != "":
             self.Logfile.error(
                 "sorry, you need to close the current instance of COOT and start again"

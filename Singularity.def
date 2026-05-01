@@ -48,7 +48,8 @@ From: rockylinux:9
         mesa-libGLU \
         libXt \
         libXmu \
-        libXxf86vm
+        libXxf86vm \
+        pymol
 
     dnf clean all
 
