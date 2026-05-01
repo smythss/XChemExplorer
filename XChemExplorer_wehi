@@ -93,7 +93,7 @@ fi
 # Build the Apptainer bind-mount list and the PATH visible inside the
 # container.
 # ---------------------------------------------------------------------------
-BINDS="${CCP4}:${CCP4}"
+BINDS="${CCP4}:${CCP4},${XCE_HOST_DIR}:${XCE_HOST_DIR}"
 CONTAINER_PATH="${CCP4}/bin"
 
 if [[ -d "${PHENIX:-}" ]]; then
