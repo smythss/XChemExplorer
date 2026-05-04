@@ -1081,18 +1081,8 @@ class run_pandda_analyse(QtCore.QThread):
                 os.system("/bin/rm -fr %s" % self.panddas_directory)
             os.mkdir(self.panddas_directory)
             _ccp4_wehi = (
-                "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
-                ": \"${CCP4:=$CCP4_WEHI}\"\n"
-                "export CCP4\n"
-                "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
-                "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
-                "else\n"
-                "    export CCP4_MASTER=\"$CCP4\"\n"
-                "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
-                "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
-                "    export CLIBD=\"$CCP4/lib/data\"\n"
-                "    export CLIB=\"$CCP4/lib\"\n"
-                "fi\n"
+                "export CCP4=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.0\n"
+                ". \"$CCP4/bin/ccp4.setup-sh\"\n"
             )
             if self.data_directory.startswith("/dls"):
                 self.select_ground_state_model = "module load ccp4/7.1.018\n"
@@ -1183,7 +1173,7 @@ class run_pandda_analyse(QtCore.QThread):
                     # bound into the container via XChemExplorer_wehi.
                     "export CCP4=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.0\n"
                     ". \"$CCP4/bin/ccp4.setup-sh\"\n"
-                    "module load pymol\n\n"
+                    "module load pymol/3.1.0\n\n"
                 )
 
             Cmds = (
