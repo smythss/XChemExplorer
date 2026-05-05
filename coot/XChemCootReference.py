@@ -482,7 +482,7 @@ class GUI(object):
             self.external_software,
             self.xce_logfile,
             None,
-            get_token(fetch_password_gtk),
+            None,
         )
         self.status_label.set_text("Refinement running...")
 
