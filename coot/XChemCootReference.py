@@ -464,7 +464,8 @@ class GUI(object):
         # now take protein pdb file and write it to newly create Refine_<serial> folder
         # note: the user has to make sure that the ligand file was merged into main file
         for item in coot_utils_XChem.molecule_number_list():
-            if coot.molecule_name(item) in self.pdbFile:
+            if (coot.molecule_name(item).endswith(self.pdb_style) or
+                    coot.molecule_name(item).endswith(os.path.basename(self.pdbFile))):
                 coot.write_pdb_file(
                     item,
                     os.path.join(

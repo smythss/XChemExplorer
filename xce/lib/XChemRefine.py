@@ -291,9 +291,11 @@ class RefineParams(object):
         found = False
         for item in glob.glob(os.path.join(self.ProjectPath, self.xtalID, "*")):
             if item.startswith(os.path.join(self.ProjectPath, self.xtalID, "Refine_")):
-                print(item[item.rfind("_") + 1 :])
-                RefinementCycle.append(int(item[item.rfind("_") + 1 :]))
-                found = True
+                try:
+                    RefinementCycle.append(int(item[item.rfind("_") + 1 :]))
+                    found = True
+                except ValueError:
+                    continue
         if found:
             for cycle in sorted(RefinementCycle):
                 try:
@@ -1454,9 +1456,11 @@ class Refine(object):
         found = False
         for item in glob.glob(os.path.join(self.ProjectPath, self.xtalID, "*")):
             if item.startswith(os.path.join(self.ProjectPath, self.xtalID, "Refine_")):
-                print(item[item.rfind("_") + 1 :])
-                RefinementCycle.append(int(item[item.rfind("_") + 1 :]))
-                found = True
+                try:
+                    RefinementCycle.append(int(item[item.rfind("_") + 1 :]))
+                    found = True
+                except ValueError:
+                    continue
         if found:
             for cycle in sorted(RefinementCycle):
                 try:
