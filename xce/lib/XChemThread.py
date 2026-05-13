@@ -1338,7 +1338,7 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         os.chdir(os.path.join(self.initial_model_directory, xtal))
         os.system("touch phenix.ligand_pipeline_run_in_progress")
 
-        # ref_mtz arrives as " -R /path/to/ref.mtz" — strip the flag prefix
+        # ref_mtz arrives as " -R /path/to/ref.mtz" - strip the flag prefix
         ref_mtz_path = ref_mtz.replace("-R ", "").strip() if ref_mtz else ""
 
         xce_dir = os.getenv("XChemExplorer_DIR", "")

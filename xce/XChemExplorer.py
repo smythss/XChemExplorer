@@ -3457,7 +3457,7 @@ class XChemExplorer(QtGui.QApplication):
                         reference_file_mtz = ""
                         if "phenix" in instruction.lower():
                             self.update_log.warning(
-                                "{0!s}: skipping phenix.ligand_pipeline — no "
+                                "{0!s}: skipping phenix.ligand_pipeline - no "
                                 "reference MTZ found for '{1!s}' (required for "
                                 "R-free flag transfer)".format(xtal, reference_file)
                             )

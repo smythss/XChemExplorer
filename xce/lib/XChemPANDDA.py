@@ -1167,7 +1167,7 @@ class run_pandda_analyse(QtCore.QThread):
             else:
                 dls = (
                     source_file + "\n"
-                    # Use CCP4 7.0 for pandda.sh only — avoids a pandas join bug in
+                    # Use CCP4 7.0 for pandda.sh only - avoids a pandas join bug in
                     # the 7.1-bundled PanDDA that causes write_output_csvs to crash.
                     # All other XCE operations continue to use the 7.1 installation
                     # bound into the container via XChemExplorer_wehi.
