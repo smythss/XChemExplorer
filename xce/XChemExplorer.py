@@ -3930,7 +3930,6 @@ class XChemExplorer(QtGui.QApplication):
         elif instruction == "Run PIPEDREAM on selected MTZ files":
             self.run_dimple_on_selected_autoprocessing_file(instruction)
 
-        # LEGACY: This feature is disabled because it relies on unsupported functionality - removed from GUI to prevent issues(2025-11-28)
         elif instruction == "Run PHENIX.LIGAND_PIPELINE on selected MTZ files":
             self.run_dimple_on_selected_autoprocessing_file(instruction)
 
@@ -3941,7 +3940,6 @@ class XChemExplorer(QtGui.QApplication):
         elif instruction == "Remove selected PIPEDREAM files":
             self.remove_selected_dimple_files(instruction)
 
-        # LEGACY: This feature is disabled because it relies on unsupported functionality - removed from GUI to prevent issues(2025-11-28)
         elif instruction == "Remove selected PHENIX.LIGAND_PIPELINE files":
             self.remove_selected_dimple_files(instruction)
 

@@ -704,15 +704,12 @@ class setup:
             # LEGACY: This feature is disabled because it relies on unsupported functionality - removed from GUI to prevent issues(2025-11-28)
             # "Fit ligands into maps after initial refinement",
             # LEGACY: This feature is disabled because it relies on unsupported functionality - removed from GUI to prevent issues(2025-11-28)
-            # "------------------------------------------",
             # "Run PIPEDREAM on selected MTZ files",
             # "Remove selected PIPEDREAM files",
             # "Set PIPEDREAM output",
-            # LEGACY: This feature is disabled because it relies on unsupported functionality - removed from GUI to prevent issues(2025-11-28)
-            # "------------------------------------------",
-            # "Run PHENIX.LIGAND_PIPELINE on selected MTZ files",
-            # "Remove selected PHENIX.LIGAND_PIPELINE files",
-            # "Set PHENIX.LIGAND_PIPELINE output",
+            "------------------------------------------",
+            "Run PHENIX.LIGAND_PIPELINE on selected MTZ files",
+            "Remove selected PHENIX.LIGAND_PIPELINE files",
         ]
 
         xce_object.panddas_file_tasks = [
