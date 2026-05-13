@@ -903,6 +903,20 @@ class XChemExplorer(QtGui.QApplication):
         settings_hbox_max_queue_jobs.addWidget(adjust_max_queue_jobs)
         vbox.addLayout(settings_hbox_max_queue_jobs)
 
+        settings_hbox_phenix_nproc = QtGui.QHBoxLayout()
+        adjust_phenix_nproc_label = QtGui.QLabel(
+            "phenix.ligand_pipeline nproc (CPUs per dataset):"
+        )
+        settings_hbox_phenix_nproc.addWidget(adjust_phenix_nproc_label)
+        adjust_phenix_nproc = QtGui.QLineEdit()
+        adjust_phenix_nproc.setFixedWidth(200)
+        adjust_phenix_nproc.setText(str(self.phenix_ligand_pipeline_nproc))
+        adjust_phenix_nproc.textChanged[str].connect(
+            self.change_phenix_ligand_pipeline_nproc
+        )
+        settings_hbox_phenix_nproc.addWidget(adjust_phenix_nproc)
+        vbox.addLayout(settings_hbox_phenix_nproc)
+
         settings_hbox_dimple_twin_mode = QtGui.QHBoxLayout()
         self.dimple_twin_mode_label_checkbox = QtGui.QCheckBox(
             "run DIMPLE in TWIN mode"
@@ -3441,6 +3455,13 @@ class XChemExplorer(QtGui.QApplication):
                         )
                     else:
                         reference_file_mtz = ""
+                        if "phenix" in instruction.lower():
+                            self.update_log.warning(
+                                "{0!s}: skipping phenix.ligand_pipeline — no "
+                                "reference MTZ found for '{1!s}' (required for "
+                                "R-free flag transfer)".format(xtal, reference_file)
+                            )
+                            continue
 
                     if os.path.isfile(
                         os.path.join(self.reference_directory, reference_file + ".cif")
@@ -3687,7 +3708,8 @@ class XChemExplorer(QtGui.QApplication):
                 self.xce_logfile,
                 self.preferences["dimple_twin_mode"],
                 pipeline,
-                None  # WEHI: no SSH token needed, slurm.py uses local sbatch,
+                None,  # WEHI: no SSH token needed, slurm.py uses local sbatch,
+                self.phenix_ligand_pipeline_nproc,
             )
             self.explorer_active = 1
             self.connect(
@@ -3775,6 +3797,28 @@ class XChemExplorer(QtGui.QApplication):
                     "changing max number of jobs running simultaneously on DLS cluster"
                     " to {0!s}".format(self.max_queue_jobs)
                 )
+            else:
+                pass
+
+    def change_phenix_ligand_pipeline_nproc(self, text):
+        try:
+            self.phenix_ligand_pipeline_nproc = int(text)
+            self.settings[
+                "phenix_ligand_pipeline_nproc"
+            ] = self.phenix_ligand_pipeline_nproc
+            self.update_log.insert(
+                "changing phenix.ligand_pipeline nproc to {0!s}".format(
+                    self.phenix_ligand_pipeline_nproc
+                )
+            )
+        except ValueError:
+            if str(text).find(".") != -1:
+                self.phenix_ligand_pipeline_nproc = int(
+                    str(text)[: str(text).find(".")]
+                )
+                self.settings[
+                    "phenix_ligand_pipeline_nproc"
+                ] = self.phenix_ligand_pipeline_nproc
             else:
                 pass
 

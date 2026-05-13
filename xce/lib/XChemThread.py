@@ -1261,6 +1261,7 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         dimple_twin_mode,
         pipeline,
         slurm_token,
+        phenix_ligand_pipeline_nproc=1,
     ):
         QtCore.QThread.__init__(self)
         self.sample_list = sample_list
@@ -1278,6 +1279,7 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         self.pipeline = pipeline
         self.dimple_twin_mode = dimple_twin_mode
         self.slurm_token = slurm_token
+        self.phenix_ligand_pipeline_nproc = phenix_ligand_pipeline_nproc
 
         self.n = 1
 
@@ -1331,35 +1333,36 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
     def prepare_phenix_ligand_pipeline_shell_script(
         self, xtal, visit_run_autoproc, mtzin, ref_pdb, ref_mtz, ref_cif
     ):
-        # check if reference mtzfile has an Rfree column; if not, then ignore
-        # DIMPLE assumes an Rfree column and barfs if it is not present
-        # note: ref_mtz looks like this: ref mtz  -R reference.mtz
-
         if not os.path.isdir(os.path.join(self.initial_model_directory, xtal)):
             os.mkdir(os.path.join(self.initial_model_directory, xtal))
         os.chdir(os.path.join(self.initial_model_directory, xtal))
-        if os.path.isdir(
-            os.path.join(self.initial_model_directory, xtal, "phenix.ligand_pipeline")
-        ):
-            os.system("/bin/rm -fr phenix.ligand_pipeline")
-        os.mkdir(
-            os.path.join(self.initial_model_directory, xtal, "phenix.ligand_pipeline")
-        )
         os.system("touch phenix.ligand_pipeline_run_in_progress")
 
-        if "bash" in os.getenv("SHELL"):
+        # ref_mtz arrives as " -R /path/to/ref.mtz" — strip the flag prefix
+        ref_mtz_path = ref_mtz.replace("-R ", "").strip() if ref_mtz else ""
+
+        xce_dir = os.getenv("XChemExplorer_DIR", "")
+        helper_script = os.path.join(
+            xce_dir, "xce", "helpers", "phenix_ligand_pipeline.py"
+        )
+
+        if "bash" in os.getenv("SHELL", ""):
             ccp4_scratch = "export CCP4_SCR=" + self.ccp4_scratch_directory + "\n"
         else:
             ccp4_scratch = ""
 
         if os.path.isdir("/dls"):
-            ccp4_scratch += "module load phenix/1.20\n"
-            ccp4_scratch += "module load ccp4/7.1.018\n"
+            env_block = (
+                ccp4_scratch
+                + "module load global/cluster\n"
+                + "module load phenix/1.20\n"
+                + "module load ccp4/7.1.018\n"
+            )
         else:
-            # WEHI Milton: CCP4 is a fixed-path install, no load modules.
-            # Source ccp4.setup-sh so all CCP4 programs can find environ.def.
-            ccp4_scratch += (
-                "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+            # WEHI Milton: CCP4 is a fixed-path install, no module system.
+            env_block = (
+                ccp4_scratch
+                + "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
                 ": \"${CCP4:=$CCP4_WEHI}\"\n"
                 "export CCP4\n"
                 "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
@@ -1371,29 +1374,24 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
                 "    export CLIBD=\"$CCP4/lib/data\"\n"
                 "    export CLIB=\"$CCP4/lib\"\n"
                 "fi\n"
+                "PHENIX_WEHI=/stornext/System/data/software/rhel/9/base/structbio/phenix/phenix-1.21.1-5286\n"
+                ": \"${PHENIX:=$PHENIX_WEHI}\"\n"
+                "export PHENIX\n"
+                "export PATH=\"$PHENIX/build/bin:${PATH:-}\"\n"
             )
 
-        mtz_column_list = XChemUtils.mtztools(mtzin).get_all_columns_as_list()
-        rfree = ""
-        if "FreeR_flag" in mtz_column_list:
-            rfree = ' xray_data.r_free_flags.label="FreeR_flag"'
-
-        _dls_modules_phenix = (
-            "module load global/cluster\n"
-            "module load phenix/1.20\n"
-            "module load buster/20240123\n"
-            if os.path.isdir("/dls") else ""
-        )
-
+        xtal_dir = os.path.join(self.initial_model_directory, xtal)
         Cmds = (
-            'export XChemExplorer_DIR="' + os.getenv("XChemExplorer_DIR") + '"\n'
+            "#!/bin/bash\n"
+            "set -euo pipefail\n"
+            "\n"
+            'export XChemExplorer_DIR="' + xce_dir + '"\n'
             'export PYTHONPATH="$XChemExplorer_DIR${PYTHONPATH:+:${PYTHONPATH}}"\n'
             "\n"
-            "cd %s\n"
-            % os.path.join(self.initial_model_directory, xtal, "phenix.ligand_pipeline")
+            + env_block
             + "\n"
-            + _dls_modules_phenix
-            + "\n" + ccp4_scratch + "\n"
+            "cd %s\n" % xtal_dir
+            + "\n"
             "$CCP4/bin/ccp4-python"
             " $XChemExplorer_DIR/xce/helpers/update_status_flag.py %s %s %s %s\n"
             % (
@@ -1403,46 +1401,49 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
                 "running",
             )
             + "\n"
-            "phenix.ligand_pipeline %s %s" % (ref_pdb, mtzin) + " mr=False"
-            " ligand_copies=0"
-            " build=False"
-            " prune=False"
-            " remove_waters=False"
-            " stop_if_r_free_greater_than=0.4"
-            " update_waters=False" + rfree + " build_hydrogens=False\n"
+            # Call the wrapper script
+            "python %(helper)s"
+            " --dataset_dir ."
+            " --ref_pdb %(ref_pdb)s"
+            " --ref_mtz %(ref_mtz)s"
+            " --mtz_pattern init.mtz"
+            " --select_best_model"
+            " --nproc %(nproc)s\n"
+            % {
+                "helper": helper_script,
+                "ref_pdb": ref_pdb,
+                "ref_mtz": ref_mtz_path,
+                "nproc": self.phenix_ligand_pipeline_nproc,
+            }
+            + "\n"
+            # Top-level symlinks expected by XCE set_results and init.pdb chain
+            "/bin/rm -f phenix.ligand_pipeline.pdb phenix.ligand_pipeline.mtz\n"
+            "if [ -f refine.pdb ]; then\n"
+            "    ln -sf refine.pdb phenix.ligand_pipeline.pdb\n"
+            "fi\n"
+            "if [ -f refine.mtz ]; then\n"
+            "    ln -sf refine.mtz phenix.ligand_pipeline.mtz\n"
+            "fi\n"
+            "/bin/rm -f init.pdb init.mtz\n"
+            "if [ -f phenix.ligand_pipeline.pdb ]; then\n"
+            "    ln -sf phenix.ligand_pipeline.pdb init.pdb\n"
+            "fi\n"
+            "if [ -f phenix.ligand_pipeline.mtz ]; then\n"
+            "    ln -sf phenix.ligand_pipeline.mtz init.mtz\n"
+            "fi\n"
             "\n"
-            "fft hklin pipeline_1/refine_final.mtz mapout 2fofc.map << EOF\n"
-            " labin F1=2FOFCWT_filled PHI=PH2FOFCWT\n"
-            "EOF\n"
+            # Map symlinks
+            "/bin/rm -f 2fofc.map fofc.map\n"
+            "LATEST_PIPELINE=$(ls -d pipeline_*/ 2>/dev/null | sort -V | tail -1)\n"
+            "if [ -n \"$LATEST_PIPELINE\" ]; then\n"
+            "    [ -f \"${LATEST_PIPELINE}2fofc.map\" ] && ln -sf \"${LATEST_PIPELINE}2fofc.map\" 2fofc.map\n"
+            "    [ -f \"${LATEST_PIPELINE}fofc.map\" ]  && ln -sf \"${LATEST_PIPELINE}fofc.map\" fofc.map\n"
+            "fi\n"
             "\n"
-            "fft hklin pipeline_1/refine_final.mtz mapout fofc.map << EOF\n"
-            " labin F1=FOFCWT PHI=PHFOFCWT\n"
-            "EOF\n"
-            "\n"
-            "cd %s\n" % os.path.join(self.initial_model_directory, xtal) + "\n"
-            "/bin/rm phenix.ligand_pipeline.pdb\n"
-            "/bin/rm phenix.ligand_pipeline.mtz\n"
-            "\n"
-            "ln -s phenix.ligand_pipeline/pipeline_1/refine_final.pdb"
-            " phenix.ligand_pipeline.pdb\n"
-            "ln -s phenix.ligand_pipeline/pipeline_1/refine_final.mtz"
-            " phenix.ligand_pipeline.mtz\n"
-            "\n"
-            "/bin/rm init.pdb\n"
-            "/bin/rm init.mtz\n"
-            "\n"
-            "ln -s phenix.ligand_pipeline.pdb init.pdb\n"
-            "ln -s phenix.ligand_pipeline.mtz init.mtz\n"
-            "\n"
-            "/bin/rm 2fofc.map\n"
-            "/bin/rm fofc.map\n"
-            "\n"
-            "ln -s phenix.ligand_pipeline/2fofc.map .\n"
-            "ln -s phenix.ligand_pipeline/fofc.map .\n"
-            "\n"
-            "$CCP4/bin/ccp4-python "
+            # Database update
+            + "$CCP4/bin/ccp4-python "
             + os.path.join(
-                os.getenv("XChemExplorer_DIR"),
+                xce_dir,
                 "xce",
                 "helpers",
                 "update_data_source_for_new_dimple_pdb.py",
@@ -1453,7 +1454,7 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
                 self.initial_model_directory,
             )
             + "\n"
-            "/bin/rm phenix.ligand_pipeline_run_in_progress\n"
+            "/bin/rm -f phenix.ligand_pipeline_run_in_progress\n"
         )
 
         os.chdir(self.ccp4_scratch_directory)
@@ -1982,7 +1983,11 @@ class remove_selected_dimple_files(QtCore.QThread):
                 os.system("/bin/rm phenix.ligand_pipeline_run_in_progress 2> /dev/null")
                 os.system("/bin/rm phenix.ligand_pipeline.pdb 2> /dev/null")
                 os.system("/bin/rm phenix.ligand_pipeline.mtz 2> /dev/null")
+                os.system("/bin/rm -f refine.pdb refine.mtz 2> /dev/null")
+                os.system("/bin/rm -f init.pdb init.mtz 2> /dev/null")
                 os.system("/bin/rm -fr phenix.ligand_pipeline")
+                os.system("/bin/rm -fr Refine_*/  2> /dev/null")
+                os.system("/bin/rm -fr pipeline_*/ 2> /dev/null")
 
             if db_dict != {}:
                 self.Logfile.insert("{0!s}: updating database".format(xtal))

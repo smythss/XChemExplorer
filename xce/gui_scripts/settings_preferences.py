@@ -269,6 +269,7 @@ class setup:
         xce_object.filename_root = "${samplename}"
         xce_object.max_queue_jobs = 100
         xce_object.dimple_twin_mode = False
+        xce_object.phenix_ligand_pipeline_nproc = 1
 
         xce_object.preferences = {
             "processed_data_to_copy": "mtz_log_only",
@@ -280,6 +281,7 @@ class setup:
             "max_queue_jobs": 100,
             "dimple_twin_mode": False,
             "initial_refinement_pipeline": "dimple",
+            "phenix_ligand_pipeline_nproc": 1,
         }
 
         # settings
@@ -304,6 +306,7 @@ class setup:
             "preferences": xce_object.preferences,
             "xce_logfile": xce_object.xce_logfile,
             "max_queue_jobs": xce_object.max_queue_jobs,
+            "phenix_ligand_pipeline_nproc": xce_object.phenix_ligand_pipeline_nproc,
             "diffraction_data_directory": xce_object.diffraction_data_directory,
             "html_export_directory": xce_object.html_export_directory,
             "group_deposit_directory": xce_object.group_deposit_directory,
