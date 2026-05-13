@@ -47,6 +47,14 @@ read -rep "Target name (e.g. Bax, shown in XCE Datasets tab target dropdown):   
 read -rep "SMILES library CSV  (e.g. LifeChem...csv) [leave blank to skip]:                 " SMILES_CSV
 read -rep "Compound distribution CSV (e.g. MX1-25795...csv) [leave blank to skip]:            " DIST_CSV
 
+DIST_SN_COL=""
+DIST_DIR_COL=""
+if [[ -n "${DIST_CSV}" ]]; then
+    echo "  Enter the exact column header names from the distribution CSV:"
+    read -rep "  Column containing compound/SN ID (e.g. 'source_directory'): " DIST_SN_COL
+    read -rep "  Column containing dataset/directory name (e.g. 'target_directory'): " DIST_DIR_COL
+fi
+
 # ---------------------------------------------------------------------------
 # Validate inputs
 # ---------------------------------------------------------------------------
@@ -157,10 +165,12 @@ done
 if [[ -n "${SMILES_CSV:-}" && -n "${DIST_CSV:-}" ]]; then
     echo ""
     echo "Writing compound SMILES files..."
-    python3 - "${SMILES_CSV}" "${DIST_CSV}" "${PROC_DIR}" mx1 << 'PYEOF'
+    python3 - "${SMILES_CSV}" "${DIST_CSV}" "${PROC_DIR}" mx1 "${DIST_SN_COL}" "${DIST_DIR_COL}" << 'PYEOF'
 import sys, csv, os, re
 
 smiles_csv, dist_csv, dest_dir, mode = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+sn_col  = sys.argv[5] if len(sys.argv) > 5 else ''
+dir_col = sys.argv[6] if len(sys.argv) > 6 else ''
 
 # SN code → SMILES string
 smiles_map = {}
@@ -174,9 +184,18 @@ with open(smiles_csv, newline='', encoding='utf-8-sig') as f:
 # target_directory → SN code → crystal name
 crystal_sn = {}  # crystal → SN
 with open(dist_csv, newline='', encoding='utf-8-sig') as f:
-    for row in csv.DictReader(f):
-        sn = row.get('source_directory', '').strip()
-        target = row.get('target_directory', '').strip()
+    reader = csv.DictReader(f)
+    headers = reader.fieldnames or []
+    if sn_col not in headers:
+        print(f'ERROR: compound column "{sn_col}" not found in {dist_csv}. Available: {headers}', file=sys.stderr)
+        sys.exit(1)
+    if dir_col not in headers:
+        print(f'ERROR: directory column "{dir_col}" not found in {dist_csv}. Available: {headers}', file=sys.stderr)
+        sys.exit(1)
+    print(f'Distribution CSV: using "{sn_col}" for compound ID, "{dir_col}" for directory name')
+    for row in reader:
+        sn     = row.get(sn_col,  '').strip()
+        target = row.get(dir_col, '').strip()
         if not sn or not target:
             continue
         fields = target.split('_')
