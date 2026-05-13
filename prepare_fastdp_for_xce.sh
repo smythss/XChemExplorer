@@ -5,7 +5,8 @@
 # directory layout required by XChemExplorer (XCE).
 #
 # Input naming convention (MX3 fast_dp output):
-#   fast_dp_results_<crystal>-sn<serial>_<run>/
+#   fast_dp_results_<crystal>_<run>/
+#     e.g. fast_dp_results_c-rel-fragment-soak_c10a-0-10_ypow_0/
 #     aimless.log
 #     fast_dp.mtz
 #     ...
@@ -75,14 +76,15 @@ for src in "${SOURCE_DIR}"/fast_dp_results_*/; do
 
     # -----------------------------------------------------------------------
     # Extract crystal name and run number from directory name.
-    # Pattern: fast_dp_results_<crystal>-sn<serial>_<run>
-    # The crystal name is everything after the prefix up to -sn<digits>_<run>.
+    # Pattern: fast_dp_results_<crystal>_<run>
+    # The run number is the trailing _<digits> suffix.
+    # The crystal name is everything before that suffix.
     # -----------------------------------------------------------------------
-    stripped="${basename#fast_dp_results_}"   # e.g. mpc-0020-7-sn02731467_1
+    stripped="${basename#fast_dp_results_}"   # e.g. c-rel-fragment-soak_c10a-0-10_ypow_0
 
-    # Crystal name = first 3 dash-delimited fields (mpc-<plate>-<well>).
+    # Crystal name = everything before the trailing _<run>.
     # Run number = digits after final underscore.
-    crystal=$(echo "${stripped}" | sed -E 's/^([^-]+-[^-]+-[^-]+)-.*/\1/')
+    crystal=$(echo "${stripped}" | sed -E 's/_[0-9]+$//')
     run_num=$(echo "${stripped}"  | sed -E 's/.*_([0-9]+)$/\1/')
 
     if [[ -z "${crystal}" || "${crystal}" == "${stripped}" ]]; then
@@ -150,10 +152,9 @@ with open(dist_csv, newline='', encoding='utf-8-sig') as f:
         target = (row.get('Name')     or row.get('target_directory') or '').strip()
         if not sn or not target:
             continue
-        # Strip fast_dp_results_ prefix if present, then take first 3 dash-delimited fields
+        # Strip fast_dp_results_ prefix and trailing run suffix (_<digits>) if present
         stripped_t = re.sub(r'^fast_dp_results_', '', target)
-        parts = stripped_t.split('-')
-        crystal = '-'.join(parts[:3]).lower() if len(parts) >= 3 else stripped_t.lower()
+        crystal = re.sub(r'_\d+$', '', stripped_t).lower()
         if crystal:
             crystal_sn[crystal] = sn
 
