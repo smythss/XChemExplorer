@@ -1838,38 +1838,16 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         f.close()
         job_name = "xce_{!s}{!s}_master".format(self.pipeline, twin)
         array_spec = "1-{!s}".format(self.n - 1)
-        # Locate sbatch on PATH or common HPC locations.
-        sbatch_bin = "sbatch"
-        for candidate in ["/usr/local/bin/sbatch",
-                           "/usr/bin/sbatch",
-                           "/usr/local/slurm/bin/sbatch",
-                           "/opt/slurm/bin/sbatch",
-                           "/cm/shared/apps/slurm/current/bin/sbatch"]:
-            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-                sbatch_bin = candidate
-                break
-        partition = os.environ.get("CLUSTER_PARTITION", "regular")
-        stdout_log = os.path.join(self.ccp4_scratch_directory, job_name + ".stdout")
-        stderr_log = os.path.join(self.ccp4_scratch_directory, job_name + ".stderr")
-        # Use os.system() - subprocess pipe creation fails inside Apptainer
-        # on some kernels with restricted namespaces (ENOTCONN).
-        sbatch_cmd = (
-            "{sbatch} --partition {partition} --job-name {job_name}"
-            " --array {array} --output {out} --error {err} {script}"
-        ).format(
-            sbatch=sbatch_bin,
-            partition=partition,
-            job_name=job_name,
+        # Delegate to slurm.submit_cluster_job so that the REST API path is
+        # used when CLUSTER_HOST is configured (avoiding the need for sbatch
+        # to be on PATH inside the Apptainer container).
+        slurm.submit_cluster_job(
+            job_name,
+            master_script,
+            self.xce_logfile,
+            self.slurm_token,
             array=array_spec,
-            out=stdout_log,
-            err=stderr_log,
-            script=master_script,
         )
-        self.Logfile.insert("Submitting via sbatch: " + sbatch_cmd)
-        ret = os.system(sbatch_cmd)
-        if ret != 0:
-            self.Logfile.insert("sbatch exited with code {!s}".format(ret))
-            raise OSError("sbatch failed with exit code {!s}".format(ret))
 
 
 class remove_selected_dimple_files(QtCore.QThread):
