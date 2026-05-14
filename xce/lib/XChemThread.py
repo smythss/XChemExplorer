@@ -1353,6 +1353,7 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
             + "[ -f /etc/profile.d/modules.sh ] && . /etc/profile.d/modules.sh || true\n"
             + "module load phenix\n"
             + "module load ccp4\n"
+            + "module load python\n"
         )
 
         xtal_dir = os.path.join(self.initial_model_directory, xtal)
@@ -1381,10 +1382,8 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
             )
             + "\n"
             # PYTHONNOUSERSITE=1 prevents ~/.local/lib/python3.x/site-packages
-            # (which may contain CCP4 2.7 paths via editable installs) from
-            # polluting the Phenix Python 3 environment and causing a fatal
-            # ImportError at startup.
-            "PYTHONNOUSERSITE=1 phenix.python %(helper)s"
+            # from polluting the environment and causing a fatal ImportError.
+            "PYTHONNOUSERSITE=1 python3 %(helper)s"
             " --dataset_dir ."
             " --ref_pdb %(ref_pdb)s"
             " --ref_mtz %(ref_mtz)s"
