@@ -1383,7 +1383,11 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         xtal_dir = os.path.join(self.initial_model_directory, xtal)
         Cmds = (
             "#!/bin/bash\n"
-            "set -euo pipefail\n"
+            # -e: exit on error  -o pipefail: catch pipe failures
+            # No -u: ccp4.setup-sh references uninitialised variables (e.g.
+            # SSL_CERT_FILE) which would abort the script under -u (nounset).
+            "set -eo pipefail\n"
+            "export SSL_CERT_FILE=\"${SSL_CERT_FILE:-}\"\n"
             "\n"
             'export XChemExplorer_DIR="' + xce_dir + '"\n'
             'export PYTHONPATH="$XChemExplorer_DIR${PYTHONPATH:+:${PYTHONPATH}}"\n'
