@@ -1346,39 +1346,14 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
             xce_dir, "xce", "helpers", "phenix_ligand_pipeline.py"
         )
 
-        if "bash" in os.getenv("SHELL", ""):
-            ccp4_scratch = "export CCP4_SCR=" + self.ccp4_scratch_directory + "\n"
-        else:
-            ccp4_scratch = ""
+        ccp4_scratch = "export CCP4_SCR=" + self.ccp4_scratch_directory + "\n"
 
-        if os.path.isdir("/dls"):
-            env_block = (
-                ccp4_scratch
-                + "module load global/cluster\n"
-                + "module load phenix/1.20\n"
-                + "module load ccp4/7.1.018\n"
-            )
-        else:
-            # WEHI Milton: CCP4 is a fixed-path install, no module system.
-            env_block = (
-                ccp4_scratch
-                + "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
-                ": \"${CCP4:=$CCP4_WEHI}\"\n"
-                "export CCP4\n"
-                "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
-                "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
-                "else\n"
-                "    export CCP4_MASTER=\"$CCP4\"\n"
-                "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
-                "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
-                "    export CLIBD=\"$CCP4/lib/data\"\n"
-                "    export CLIB=\"$CCP4/lib\"\n"
-                "fi\n"
-                "PHENIX_WEHI=/stornext/System/data/software/rhel/9/base/structbio/phenix/phenix-1.21.1-5286\n"
-                ": \"${PHENIX:=$PHENIX_WEHI}\"\n"
-                "export PHENIX\n"
-                "export PATH=\"$PHENIX/build/bin:${PATH:-}\"\n"
-            )
+        env_block = (
+            ccp4_scratch
+            + "[ -f /etc/profile.d/modules.sh ] && . /etc/profile.d/modules.sh || true\n"
+            + "module load phenix\n"
+            + "module load ccp4\n"
+        )
 
         xtal_dir = os.path.join(self.initial_model_directory, xtal)
         Cmds = (
@@ -1396,7 +1371,7 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
             + "\n"
             "cd %s\n" % xtal_dir
             + "\n"
-            "$CCP4/bin/ccp4-python"
+            "ccp4-python"
             " $XChemExplorer_DIR/xce/helpers/update_status_flag.py %s %s %s %s\n"
             % (
                 os.path.join(self.database_directory, self.data_source_file),
@@ -1405,8 +1380,11 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
                 "running",
             )
             + "\n"
-            # Call the wrapper script
-            "python %(helper)s"
+            # PYTHONNOUSERSITE=1 prevents ~/.local/lib/python3.x/site-packages
+            # (which may contain CCP4 2.7 paths via editable installs) from
+            # polluting the Phenix Python 3 environment and causing a fatal
+            # ImportError at startup.
+            "PYTHONNOUSERSITE=1 phenix.python %(helper)s"
             " --dataset_dir ."
             " --ref_pdb %(ref_pdb)s"
             " --ref_mtz %(ref_mtz)s"
