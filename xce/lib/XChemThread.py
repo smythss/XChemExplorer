@@ -1357,6 +1357,14 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         )
 
         xtal_dir = os.path.join(self.initial_model_directory, xtal)
+
+        # Look for seq.fa next to the reference MTZ/PDB (e.g. reference/seq.fa)
+        seq_file_arg = ""
+        if ref_mtz_path:
+            seq_fa = os.path.join(os.path.dirname(ref_mtz_path), "seq.fa")
+            if os.path.isfile(seq_fa):
+                seq_file_arg = " --seq_file " + seq_fa
+
         Cmds = (
             "#!/bin/bash\n"
             # -e: exit on error  -o pipefail: catch pipe failures
@@ -1387,13 +1395,16 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
             " --dataset_dir ."
             " --ref_pdb %(ref_pdb)s"
             " --ref_mtz %(ref_mtz)s"
-            " --mtz_pattern init.mtz"
+            " --mtz_pattern %(xtal_mtz)s"
+            "%(seq_file_arg)s"
             " --select_best_model"
             " --nproc %(nproc)s\n"
             % {
                 "helper": helper_script,
                 "ref_pdb": ref_pdb,
                 "ref_mtz": ref_mtz_path,
+                "xtal_mtz": xtal + ".mtz",
+                "seq_file_arg": seq_file_arg,
                 "nproc": self.phenix_ligand_pipeline_nproc,
             }
             + "\n"
