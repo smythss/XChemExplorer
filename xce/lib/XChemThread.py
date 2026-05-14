@@ -963,7 +963,7 @@ class create_png_and_cif_of_compound(QtCore.QThread):
                 + "module load pymol\n"
                 + "module load phenix\n"
                 + "module load python\n"
-                + "./xce_{!s}{!s}_$SLURM_ARRAY_TASK_ID.sh\n".format(self.restraints_program, twin)
+                + "./xce_{!s}_$SLURM_ARRAY_TASK_ID.sh\n".format(self.restraints_program)
             )
             f = open("%s_master.sh" % self.restraints_program, "w")
             f.write(Cmds)
