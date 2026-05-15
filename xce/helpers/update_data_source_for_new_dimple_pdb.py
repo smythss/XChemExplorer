@@ -146,3 +146,19 @@ if __name__ == "__main__":
         os.system("/bin/rm dimple.mtz")
         os.system("/bin/rm 2fofc.map")
         os.system("/bin/rm fofc.map")
+
+        # For phenix.ligand_pipeline: refine.pdb is the pipeline output.
+        # Populate RefinementRcryst/RefinementRfree so the Maps tab can display them.
+        refine_pdb = os.path.join(inital_model_directory, xtal, "refine.pdb")
+        if os.path.isfile(refine_pdb):
+            pdb = parse().PDBheader(refine_pdb)
+            ref_db_dict = {
+                "RefinementRcryst": pdb["Rcryst"],
+                "RefinementRcrystTraficLight": pdb["RcrystTL"],
+                "RefinementRfree": pdb["Rfree"],
+                "RefinementRfreeTraficLight": pdb["RfreeTL"],
+                "RefinementResolution": pdb["ResolutionHigh"],
+                "RefinementSpaceGroup": pdb["SpaceGroup"],
+            }
+            print("==> xce: updating data source with phenix.ligand_pipeline R-factors from refine.pdb")
+            db.update_data_source(xtal, ref_db_dict)

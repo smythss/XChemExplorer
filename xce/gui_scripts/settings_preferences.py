@@ -399,6 +399,8 @@ class setup:
             "Resolution\nHigh",
             "Dimple\nRcryst",
             "Dimple\nRfree",
+            "Refinement\nRcryst",
+            "Refinement\nRfree",
             "DataProcessing\nSpaceGroup",
             "Reference\nSpaceGroup",
             "Difference\nUC Volume (%)",
