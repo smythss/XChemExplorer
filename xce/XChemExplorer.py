@@ -3710,6 +3710,7 @@ class XChemExplorer(QtGui.QApplication):
                 pipeline,
                 None,  # WEHI: no SSH token needed, slurm.py uses local sbatch,
                 self.phenix_ligand_pipeline_nproc,
+                self.phenix_ligand_pipeline_labels,
             )
             self.explorer_active = 1
             self.connect(

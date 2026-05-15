@@ -1262,6 +1262,7 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         pipeline,
         slurm_token,
         phenix_ligand_pipeline_nproc=1,
+        phenix_ligand_pipeline_labels="IMEAN,SIGIMEAN",
     ):
         QtCore.QThread.__init__(self)
         self.sample_list = sample_list
@@ -1280,6 +1281,7 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
         self.dimple_twin_mode = dimple_twin_mode
         self.slurm_token = slurm_token
         self.phenix_ligand_pipeline_nproc = phenix_ligand_pipeline_nproc
+        self.phenix_ligand_pipeline_labels = phenix_ligand_pipeline_labels
 
         self.n = 1
 
@@ -1398,7 +1400,8 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
             " --mtz_pattern %(xtal_mtz)s"
             "%(seq_file_arg)s"
             " --select_best_model"
-            " --nproc %(nproc)s\n"
+            " --nproc %(nproc)s"
+            "%(labels_arg)s\n"
             % {
                 "helper": helper_script,
                 "ref_pdb": ref_pdb,
@@ -1406,6 +1409,11 @@ class run_dimple_on_all_autoprocessing_files_new(QtCore.QThread):
                 "xtal_mtz": xtal + ".mtz",
                 "seq_file_arg": seq_file_arg,
                 "nproc": self.phenix_ligand_pipeline_nproc,
+                "labels_arg": (
+                    " --xray_data_labels " + self.phenix_ligand_pipeline_labels
+                    if self.phenix_ligand_pipeline_labels
+                    else ""
+                ),
             }
             + "\n"
             # Top-level symlinks expected by XCE set_results and init.pdb chain
