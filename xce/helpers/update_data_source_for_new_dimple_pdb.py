@@ -148,17 +148,32 @@ if __name__ == "__main__":
         os.system("/bin/rm fofc.map")
 
         # For phenix.ligand_pipeline: refine.pdb is the pipeline output.
-        # Populate RefinementRcryst/RefinementRfree so the Maps tab can display them.
+        # Populate R-factors, space group, and point group so Maps tab columns
+        # (Refinement Rcryst/Rfree, Dimple Rcryst/Rfree, DataProcessing SpaceGroup)
+        # are all kept up to date with the Phaser-solved space group.
         refine_pdb = os.path.join(inital_model_directory, xtal, "refine.pdb")
         if os.path.isfile(refine_pdb):
             pdb = parse().PDBheader(refine_pdb)
             ref_db_dict = {
+                # Refinement R-factors — shown in the new Maps tab columns
                 "RefinementRcryst": pdb["Rcryst"],
                 "RefinementRcrystTraficLight": pdb["RcrystTL"],
                 "RefinementRfree": pdb["Rfree"],
                 "RefinementRfreeTraficLight": pdb["RfreeTL"],
                 "RefinementResolution": pdb["ResolutionHigh"],
                 "RefinementSpaceGroup": pdb["SpaceGroup"],
+                "RefinementStatus": "finished",
+                "RefinementOutcome": "1 - Analysis Pending",
+                # Dimple R-factor columns — already shown in Maps tab; fill from
+                # refine.pdb so they are not left blank for pipeline runs
+                "DimpleRcryst": pdb["Rcryst"],
+                "DimpleRfree": pdb["Rfree"],
+                "DimpleStatus": "finished",
+                "DimplePathToPDB": os.path.realpath(refine_pdb),
+                # Keep DataProcessing space group / point group in sync with the
+                # Phaser-solved space group stored in the CRYST1 record of refine.pdb
+                "DataProcessingSpaceGroup": pdb["SpaceGroup"],
+                "DataProcessingPointGroup": pdb["PointGroup"],
             }
-            print("==> xce: updating data source with phenix.ligand_pipeline R-factors from refine.pdb")
+            print("==> xce: updating data source with phenix.ligand_pipeline results from refine.pdb")
             db.update_data_source(xtal, ref_db_dict)
