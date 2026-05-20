@@ -1451,7 +1451,7 @@ class run_pandda_two_analyse(QtCore.QThread):
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                cwd=self.panddas_directory,
+                close_fds=True,
             )
             stdout, stderr = proc.communicate()
             if stdout:
