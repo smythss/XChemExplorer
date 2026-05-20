@@ -1447,21 +1447,21 @@ class run_pandda_two_analyse(QtCore.QThread):
         )
 
         try:
-            result = subprocess.run(
+            proc = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                universal_newlines=True,
                 cwd=self.panddas_directory,
             )
-            if result.stdout:
-                self.Logfile.insert("pandda2 submission stdout:\n" + result.stdout)
-            if result.stderr:
-                self.Logfile.warning("pandda2 submission stderr:\n" + result.stderr)
-            if result.returncode != 0:
+            stdout, stderr = proc.communicate()
+            if stdout:
+                self.Logfile.insert("pandda2 submission stdout:\n" + stdout)
+            if stderr:
+                self.Logfile.warning("pandda2 submission stderr:\n" + stderr)
+            if proc.returncode != 0:
                 self.Logfile.error(
                     "pandda2 submission failed with return code {}".format(
-                        result.returncode
+                        proc.returncode
                     )
                 )
         except Exception as e:
