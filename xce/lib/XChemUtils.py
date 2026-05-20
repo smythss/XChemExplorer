@@ -1442,12 +1442,13 @@ class mtztools:
         return pointgroup
 
     def get_spg_number_from_mtz(self):
-        spg_number = 0
-        mtzdmp = subprocess.Popen(["mtzdmp", self.mtzfile], stdout=subprocess.PIPE)
-        for n, line in enumerate(iter(mtzdmp.stdout.readline, "")):
-            if line.startswith(" * Space group ="):
-                spg_number = int(line[line.rfind(")") - 3 : line.rfind(")")])
-        return spg_number
+        try:
+            gmtz = gemmi.read_mtz_file(self.mtzfile)
+            if gmtz.spacegroup:
+                return gmtz.spacegroup.number
+        except Exception:
+            pass
+        return 0
 
     def get_pointgroup_from_mtz(self):
         pointgroup = ""
@@ -1456,29 +1457,12 @@ class mtztools:
         return pointgroup
 
     def get_number_measured_reflections(self):
-        missing_reflections = "0"
-        all_reflections = "0"
-        meassured_reflections = "0"
-        mtzdmp = subprocess.Popen(["mtzdmp", self.mtzfile], stdout=subprocess.PIPE)
-        foundTable = False
-        for n, line in enumerate(iter(mtzdmp.stdout.readline, "")):
-            if line.startswith(
-                " Col Sort    Min    Max    Num      %"
-                "     Mean     Mean   Resolution   Type Column"
-            ):
-                foundTable = True
-            if foundTable and len(line.split()) == 12:
-                if line.split()[11] == "F":
-                    missing_reflections = line.split()[4]
-                    foundTable = False
-            if line.startswith(" No. of reflections used in FILE STATISTICS"):
-                all_reflections = line.split()[7]
-                break
         try:
-            meassured_reflections = int(all_reflections) - int(missing_reflections)
-        except ValueError:
+            gmtz = gemmi.read_mtz_file(self.mtzfile)
+            return gmtz.nreflections
+        except Exception:
             pass
-        return meassured_reflections
+        return 0
 
     def calculate_correlaton_between_intensities_in_mtzfiles(self, mtzin):
         CC = "0.0"
@@ -1521,104 +1505,59 @@ class mtztools:
             "unitcell_volume": "n/a",
             "bravais_lattice": "n/a",
         }
-        a = 0.0
-        b = 0.0
-        c = 0.0
-        alpha_rad = 0.0
-        beta_rad = 0.0
-        gamma_rad = 0.0
-        resolution_line = 1000000
-        cell_line = 1000000
-        mtzdmp = subprocess.Popen(["mtzdmp", self.mtzfile], stdout=subprocess.PIPE)
-        for n, line in enumerate(iter(mtzdmp.stdout.readline, "")):
-            if line.startswith(" *  Resolution Range :"):
-                resolution_line = n + 2
-            if n == resolution_line and len(line.split()) == 8:
-                mtz["resolution_high"] = round(float(line.split()[5]), 2)
-            if line.startswith(" * Cell Dimensions :"):
-                cell_line = n + 2
-            if n == cell_line and len(line.split()) == 6:
-                a = round(float(line.split()[0]), 1)
-                b = round(float(line.split()[1]), 1)
-                c = round(float(line.split()[2]), 1)
-                alpha = round(float(line.split()[3]), 1)
-                beta = round(float(line.split()[4]), 1)
-                gamma = round(float(line.split()[5]), 1)
-                mtz["unitcell"] = (
-                    str(a)
-                    + " "
-                    + str(b)
-                    + " "
-                    + str(c)
-                    + " "
-                    + str(alpha)
-                    + " "
-                    + str(beta)
-                    + " "
-                    + str(gamma)
-                )
-                alpha_rad = math.radians(alpha)
-                beta_rad = math.radians(beta)
-                gamma_rad = math.radians(gamma)
-            if line.startswith(" * Space group ="):
-                spg_number = int(line[line.rfind(")") - 3 : line.rfind(")")])
+        try:
+            gmtz = gemmi.read_mtz_file(self.mtzfile)
+            mtz["resolution_high"] = round(gmtz.resolution_high(), 2)
+            cell = gmtz.cell
+            a = round(cell.a, 1)
+            b = round(cell.b, 1)
+            c = round(cell.c, 1)
+            alpha = round(cell.alpha, 1)
+            beta = round(cell.beta, 1)
+            gamma = round(cell.gamma, 1)
+            mtz["unitcell"] = (
+                str(a)
+                + " "
+                + str(b)
+                + " "
+                + str(c)
+                + " "
+                + str(alpha)
+                + " "
+                + str(beta)
+                + " "
+                + str(gamma)
+            )
+            mtz["unitcell_volume"] = round(cell.volume, 1)
+            if gmtz.spacegroup:
+                spg_number = gmtz.spacegroup.number
                 mtz["bravais_lattice"] = self.get_bravais_lattice_from_spg_number(
                     spg_number
                 )
-                mtz["spacegroup"] = line[line.find("'") + 1 : line.rfind("'")]
-        if mtz["bravais_lattice"] == "triclinic":
-            mtz["unitcell_volume"] = (
-                a
-                * b
-                * c
-                * math.sqrt(
-                    (
-                        1
-                        - math.cos(alpha_rad) ** 2
-                        - math.cos(beta_rad) ** 2
-                        - math.cos(gamma_rad) ** 2
-                    )
-                    + 2
-                    * (math.cos(alpha_rad) * math.cos(beta_rad) * math.cos(gamma_rad))
-                )
-            )
-        elif "monoclinic" in mtz["bravais_lattice"]:
-            mtz["unitcell_volume"] = round(a * b * c * math.sin(beta_rad), 1)
-        elif (
-            mtz["bravais_lattice"] == "orthorhombic"
-            or mtz["bravais_lattice"] == "tetragonal"
-            or mtz["bravais_lattice"] == "cubic"
-        ):
-            mtz["unitcell_volume"] = round(a * b * c, 1)
-        elif (
-            mtz["bravais_lattice"] == "hexagonal"
-            or mtz["bravais_lattice"] == "rhombohedral"
-        ):
-            mtz["unitcell_volume"] = round(a * b * c * (math.sin(math.radians(60))), 1)
-
+                mtz["spacegroup"] = gmtz.spacegroup.hm
+        except Exception:
+            pass
         return mtz
 
     def get_all_columns_as_dict(self):
         column_dict = {"F": [], "I": [], "SIG": [], "PHS": [], "FOM": [], "RFREE": []}
-        startline = 1000000
-        mtzdmp = subprocess.Popen(["mtzdmp", self.mtzfile], stdout=subprocess.PIPE)
-        for n, line in enumerate(iter(mtzdmp.stdout.readline, "")):
-            if line.startswith(" Col Sort    Min    Max    Num"):
-                startline = n + 2
-            if n >= startline and len(line.split()) > 10:
-                if line.split()[10] == "F":
-                    column_dict["F"].append(line.split()[11])
-                if line.split()[10] == "J":
-                    column_dict["I"].append(line.split()[11])
-                if line.split()[10] == "Q":
-                    column_dict["SIG"].append(line.split()[11])
-                if line.split()[10] == "I":
-                    column_dict["RFREE"].append(line.split()[11])
-                if line.split()[10] == "P":
-                    column_dict["PHS"].append(line.split()[11])
-                if line.split()[10] == "W":
-                    column_dict["FOM"].append(line.split()[11])
-
+        try:
+            gmtz = gemmi.read_mtz_file(self.mtzfile)
+            for col in gmtz.columns:
+                if col.type == "F":
+                    column_dict["F"].append(col.label)
+                elif col.type == "J":
+                    column_dict["I"].append(col.label)
+                elif col.type == "Q":
+                    column_dict["SIG"].append(col.label)
+                elif col.type == "I":
+                    column_dict["RFREE"].append(col.label)
+                elif col.type == "P":
+                    column_dict["PHS"].append(col.label)
+                elif col.type == "W":
+                    column_dict["FOM"].append(col.label)
+        except Exception:
+            pass
         return column_dict
 
     def get_all_columns_as_list(self):
