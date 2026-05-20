@@ -917,6 +917,37 @@ class XChemExplorer(QtGui.QApplication):
         settings_hbox_phenix_nproc.addWidget(adjust_phenix_nproc)
         vbox.addLayout(settings_hbox_phenix_nproc)
 
+        settings_hbox_pandda2_env = QtGui.QHBoxLayout()
+        settings_hbox_pandda2_env.addWidget(
+            QtGui.QLabel("pandda2 conda environment path:")
+        )
+        adjust_pandda2_env = QtGui.QLineEdit()
+        adjust_pandda2_env.setFixedWidth(400)
+        adjust_pandda2_env.setText(str(self.pandda2_env_path))
+        adjust_pandda2_env.textChanged[str].connect(self.change_pandda2_env_path)
+        settings_hbox_pandda2_env.addWidget(adjust_pandda2_env)
+        vbox.addLayout(settings_hbox_pandda2_env)
+
+        settings_hbox_pandda2_dir = QtGui.QHBoxLayout()
+        settings_hbox_pandda2_dir.addWidget(QtGui.QLabel("pandda2 directory:"))
+        adjust_pandda2_dir = QtGui.QLineEdit()
+        adjust_pandda2_dir.setFixedWidth(400)
+        adjust_pandda2_dir.setText(str(self.pandda2_dir))
+        adjust_pandda2_dir.textChanged[str].connect(self.change_pandda2_dir)
+        settings_hbox_pandda2_dir.addWidget(adjust_pandda2_dir)
+        vbox.addLayout(settings_hbox_pandda2_dir)
+
+        settings_hbox_pandda2_sbatch = QtGui.QHBoxLayout()
+        settings_hbox_pandda2_sbatch.addWidget(
+            QtGui.QLabel("pandda2 sbatch script path:")
+        )
+        adjust_pandda2_sbatch = QtGui.QLineEdit()
+        adjust_pandda2_sbatch.setFixedWidth(400)
+        adjust_pandda2_sbatch.setText(str(self.pandda2_sbatch_script))
+        adjust_pandda2_sbatch.textChanged[str].connect(self.change_pandda2_sbatch_script)
+        settings_hbox_pandda2_sbatch.addWidget(adjust_pandda2_sbatch)
+        vbox.addLayout(settings_hbox_pandda2_sbatch)
+
         settings_hbox_dimple_twin_mode = QtGui.QHBoxLayout()
         self.dimple_twin_mode_label_checkbox = QtGui.QCheckBox(
             "run DIMPLE in TWIN mode"
@@ -3823,6 +3854,18 @@ class XChemExplorer(QtGui.QApplication):
             else:
                 pass
 
+    def change_pandda2_env_path(self, text):
+        self.pandda2_env_path = str(text)
+        self.settings["pandda2_env_path"] = self.pandda2_env_path
+
+    def change_pandda2_dir(self, text):
+        self.pandda2_dir = str(text)
+        self.settings["pandda2_dir"] = self.pandda2_dir
+
+    def change_pandda2_sbatch_script(self, text):
+        self.pandda2_sbatch_script = str(text)
+        self.settings["pandda2_sbatch_script"] = self.pandda2_sbatch_script
+
     def change_acceptable_low_resolution_limit(self, text):
         try:
             self.acceptable_low_resolution_limit_for_data = float(text)
@@ -4147,6 +4190,9 @@ class XChemExplorer(QtGui.QApplication):
             ),
             "write_mean_map": "interesting",
             "pandda_table": self.pandda_analyse_data_table,
+            "pandda2_env_path": self.pandda2_env_path,
+            "pandda2_dir": self.pandda2_dir,
+            "pandda2_sbatch_script": self.pandda2_sbatch_script,
         }
 
         if run == "pre_run":

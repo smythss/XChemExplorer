@@ -1361,26 +1361,44 @@ class run_pandda_two_analyse(QtCore.QThread):
         self.write_mean_maps = pandda_params["write_mean_map"]
         self.calc_map_by = pandda_params["average_map"]
         self.select_ground_state_model = ""
+        self.pandda2_env_path = pandda_params.get("pandda2_env_path", "")
+        self.pandda2_dir = pandda_params.get("pandda2_dir", "")
+        self.pandda2_sbatch_script = pandda_params.get("pandda2_sbatch_script", "")
 
     def run(self):
-        if not self.data_directory.startswith("/dls"):
-            self.Logfile.error("Sorry, you need to be at DLS for pandda2 to work!")
-            return None
-
         os.chdir(self.panddas_directory)
 
-        # Get the datasets to ignore
+        if not self.pandda2_sbatch_script or not os.path.isfile(self.pandda2_sbatch_script):
+            self.Logfile.error(
+                "pandda2 sbatch script not found: '{}'. "
+                "Set it in Settings.".format(self.pandda2_sbatch_script)
+            )
+            return None
+
+        if not self.pandda2_env_path or not os.path.isdir(self.pandda2_env_path):
+            self.Logfile.error(
+                "pandda2 environment path not found: '{}'. "
+                "Set it in Settings.".format(self.pandda2_env_path)
+            )
+            return None
+
+        if not self.pandda2_dir or not os.path.isdir(self.pandda2_dir):
+            self.Logfile.error(
+                "pandda2 directory not found: '{}'. "
+                "Set it in Settings.".format(self.pandda2_dir)
+            )
+            return None
+
+        # Collect ignore/char/zmap lists from the PANDDA table checkboxes
         ignore = []
         char = []
         zmap = []
-
         for i in range(0, self.pandda_analyse_data_table.rowCount()):
             ignore_all_checkbox = self.pandda_analyse_data_table.cellWidget(i, 7)
             ignore_characterisation_checkbox = (
                 self.pandda_analyse_data_table.cellWidget(i, 8)
             )
             ignore_zmap_checkbox = self.pandda_analyse_data_table.cellWidget(i, 9)
-
             if ignore_all_checkbox.isChecked():
                 ignore.append(str(self.pandda_analyse_data_table.item(i, 0).text()))
             if ignore_characterisation_checkbox.isChecked():
@@ -1388,63 +1406,55 @@ class run_pandda_two_analyse(QtCore.QThread):
             if ignore_zmap_checkbox.isChecked():
                 zmap.append(str(self.pandda_analyse_data_table.item(i, 0).text()))
 
-        def append_to_ignore_string(datasets_list, append_string):
-            append_string = '{}"'.format(
-                ",".join(
-                    [
-                        append_string,
-                    ]
-                    + datasets_list
-                )
-            )
-            return append_string
+        # Build extra pandda args from keyword_arguments and ignore/char/zmap lists
+        extra_args = str(self.keyword_arguments).strip() if self.keyword_arguments else ""
+        if ignore:
+            extra_args += ' ignore_datasets="{}"'.format(",".join(ignore))
+        if char:
+            extra_args += ' exclude_from_characterisation="{}"'.format(",".join(char))
+        if zmap:
+            extra_args += ' exclude_from_z_map_analysis="{}"'.format(",".join(zmap))
 
-        ignore_string = 'ignore_datasets="'
-        ignore_string = append_to_ignore_string(ignore, ignore_string)
-
-        char_string = 'exclude_from_characterisation="'
-        char_string = append_to_ignore_string(char, char_string)
-
-        zmap_string = 'exclude_from_z_map_analysis="'
-        zmap_string = append_to_ignore_string(zmap, zmap_string)
-
-        cmd = (
-            "#!/bin/bash\n"
-            ". /etc/profile.d/modules.sh\n"
-            'export PYTHONPATH=""\n'
-            "/dls/science/groups/i04-1/software/pandda_2_gemmi/pandda2"
-            " --data_dirs={0!s}".format(self.data_directory.replace("/*", ""))
-            + " --out_dir={0!s}".format(self.panddas_directory)
-            + ' --pdb_regex="{0!s}"'.format(self.pdb_style)
-            + ' --mtz_regex="{0!s}"'.format(self.mtz_style)
-            + " --local_cpus=36"
-            + " {0!s}".format(self.keyword_arguments)
-        )
-        if len(ignore) > 0:
-            cmd = cmd + " {}".format(ignore_string)
-        if len(char) > 0:
-            cmd = cmd + " {}".format(char_string)
-        if len(zmap) > 0:
-            cmd = cmd + " {}".format(zmap_string)
+        cmd = [
+            "bash",
+            self.pandda2_sbatch_script,
+            "--data_dir", self.data_directory.replace("/*", ""),
+            "--out_dir", self.panddas_directory,
+            "--pdb_regex", self.pdb_style,
+            "--mtz_regex", self.mtz_style,
+            "--env_path", self.pandda2_env_path,
+            "--pandda2_dir", self.pandda2_dir,
+            "--cpus", str(self.nproc),
+        ]
+        if self.min_build_datasets:
+            cmd += ["--min_characterisation_datasets", str(self.min_build_datasets)]
+        if extra_args.strip():
+            cmd += ["--pandda_args", extra_args.strip()]
 
         self.Logfile.insert(
-            "running pandda.analyse with the following command:\n" + cmd
+            "submitting pandda2 job with command:\n" + " ".join(cmd)
         )
 
-        f = open("pandda2.sh", "w")
-        f.write(cmd)
-        f.close()
-
-        self.Logfile.warning("ignoring selected submission option")
-
-        slurm.submit_cluster_job(
-            "pandda2",
-            "pandda2.sh",
-            self.xce_logfile,
-            self.slurm_token,
-            memory=36 * 5 * 1024,
-            tasks=36,
-        )
+        try:
+            result = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+                cwd=self.panddas_directory,
+            )
+            if result.stdout:
+                self.Logfile.insert("pandda2 submission stdout:\n" + result.stdout)
+            if result.stderr:
+                self.Logfile.warning("pandda2 submission stderr:\n" + result.stderr)
+            if result.returncode != 0:
+                self.Logfile.error(
+                    "pandda2 submission failed with return code {}".format(
+                        result.returncode
+                    )
+                )
+        except Exception as e:
+            self.Logfile.error("Failed to submit pandda2 job: {}".format(str(e)))
 
         self.emit(QtCore.SIGNAL("datasource_menu_reload_samples"))
 

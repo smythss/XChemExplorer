@@ -271,6 +271,9 @@ class setup:
         xce_object.dimple_twin_mode = False
         xce_object.phenix_ligand_pipeline_nproc = 1
         xce_object.phenix_ligand_pipeline_labels = "IMEAN,SIGIMEAN"
+        xce_object.pandda2_env_path = ""
+        xce_object.pandda2_dir = ""
+        xce_object.pandda2_sbatch_script = ""
 
         xce_object.preferences = {
             "processed_data_to_copy": "mtz_log_only",
@@ -284,6 +287,9 @@ class setup:
             "initial_refinement_pipeline": "dimple",
             "phenix_ligand_pipeline_nproc": 1,
             "phenix_ligand_pipeline_labels": "IMEAN,SIGIMEAN",
+            "pandda2_env_path": "",
+            "pandda2_dir": "",
+            "pandda2_sbatch_script": "",
         }
 
         # settings
@@ -310,6 +316,9 @@ class setup:
             "max_queue_jobs": xce_object.max_queue_jobs,
             "phenix_ligand_pipeline_nproc": xce_object.phenix_ligand_pipeline_nproc,
             "phenix_ligand_pipeline_labels": xce_object.phenix_ligand_pipeline_labels,
+            "pandda2_env_path": xce_object.pandda2_env_path,
+            "pandda2_dir": xce_object.pandda2_dir,
+            "pandda2_sbatch_script": xce_object.pandda2_sbatch_script,
             "diffraction_data_directory": xce_object.diffraction_data_directory,
             "html_export_directory": xce_object.html_export_directory,
             "group_deposit_directory": xce_object.group_deposit_directory,
