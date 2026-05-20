@@ -1415,7 +1415,7 @@ class run_pandda_two_analyse(QtCore.QThread):
                 extra_args += " --max_rfree={}".format(self.max_rfree)
             except ValueError:
                 self.Logfile.warning(
-                    "Invalid max_rfree value '{}' — ignoring Rfree filter.".format(
+                    "Invalid max_rfree value '{}' - ignoring Rfree filter.".format(
                         self.max_rfree
                     )
                 )
