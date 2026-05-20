@@ -286,6 +286,18 @@ class PanddaTab:
             xce_object.pandda_min_build_dataset_entry
         )
 
+        # max Rfree filter
+        label = QtGui.QLabel(
+            "Max Rfree filter for datasets (pandda2 only; blank = no filter):"
+        )
+        xce_object.pandda_analyse_input_params_vbox.addWidget(label)
+        xce_object.pandda_rfree_filter_entry = QtGui.QLineEdit()
+        xce_object.pandda_rfree_filter_entry.setPlaceholderText("e.g. 0.40")
+        xce_object.pandda_rfree_filter_entry.setFixedWidth(100)
+        xce_object.pandda_analyse_input_params_vbox.addWidget(
+            xce_object.pandda_rfree_filter_entry
+        )
+
         # maximum number of datasets
         label = QtGui.QLabel("max_new_datasets")
         xce_object.pandda_analyse_input_params_vbox.addWidget(label)

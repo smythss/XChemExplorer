@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import sys
 
@@ -155,7 +156,7 @@ if __name__ == "__main__":
         if os.path.isfile(refine_pdb):
             pdb = parse().PDBheader(refine_pdb)
             ref_db_dict = {
-                # Refinement R-factors — shown in the new Maps tab columns
+                # Refinement R-factors - shown in the new Maps tab columns
                 "RefinementRcryst": pdb["Rcryst"],
                 "RefinementRcrystTraficLight": pdb["RcrystTL"],
                 "RefinementRfree": pdb["Rfree"],
@@ -164,7 +165,7 @@ if __name__ == "__main__":
                 "RefinementSpaceGroup": pdb["SpaceGroup"],
                 "RefinementStatus": "finished",
                 "RefinementOutcome": "1 - Analysis Pending",
-                # Dimple R-factor columns — already shown in Maps tab; fill from
+                # Dimple R-factor columns - already shown in Maps tab; fill from
                 # refine.pdb so they are not left blank for pipeline runs
                 "DimpleRcryst": pdb["Rcryst"],
                 "DimpleRfree": pdb["Rfree"],

@@ -413,8 +413,11 @@ class XChemExplorer(QtGui.QApplication):
             return
 
         for xtal in self.initial_model_dimple_dict:
-            reference_file_selection_combobox = self.initial_model_dimple_dict[xtal][1]
-            self.populate_reference_combobox(reference_file_selection_combobox)
+            try:
+                reference_file_selection_combobox = self.initial_model_dimple_dict[xtal][1]
+                self.populate_reference_combobox(reference_file_selection_combobox)
+            except RuntimeError:
+                continue
             db_dict = self.xtal_db_dict[xtal]
             pg_xtal = db_dict["DataProcessingPointGroup"]
             ucVol_xtal = db_dict["DataProcessingUnitCellVolume"]
@@ -3347,10 +3350,19 @@ class XChemExplorer(QtGui.QApplication):
                 self.settings["reference_directory"] = self.reference_directory
                 self.update_reference_files(" ")
                 for xtal in self.initial_model_dimple_dict:
-                    reference_file_selection_combobox = self.initial_model_dimple_dict[
-                        xtal
-                    ][1]
-                    self.populate_reference_combobox(reference_file_selection_combobox)
+                    try:
+                        reference_file_selection_combobox = self.initial_model_dimple_dict[
+                            xtal
+                        ][1]
+                        self.populate_reference_combobox(reference_file_selection_combobox)
+                    except RuntimeError:
+                        continue
+
+            # Restore pandda2 settings (added later; use .get() for older .conf files)
+            for _key in ("pandda2_env_path", "pandda2_dir", "pandda2_sbatch_script"):
+                if _key in pickled_settings:
+                    setattr(self, _key, pickled_settings[_key])
+                    self.settings[_key] = pickled_settings[_key]
 
             self.initial_model_directory_label.setText(self.initial_model_directory)
             self.panddas_directory_label.setText(self.panddas_directory)
@@ -4193,6 +4205,7 @@ class XChemExplorer(QtGui.QApplication):
             "pandda2_env_path": self.pandda2_env_path,
             "pandda2_dir": self.pandda2_dir,
             "pandda2_sbatch_script": self.pandda2_sbatch_script,
+            "max_rfree": str(self.pandda_rfree_filter_entry.text()).strip(),
         }
 
         if run == "pre_run":
@@ -5039,6 +5052,8 @@ class XChemExplorer(QtGui.QApplication):
 
         for xtal in sorted(self.xtal_db_dict):
             new_xtal = False
+            run_dimple = None
+            reference_file_selection_combobox = None
             db_dict = self.xtal_db_dict[xtal]
             if str(db_dict["DataCollectionOutcome"]).lower().startswith("success"):
                 reference_file = self.find_suitable_reference_file(db_dict)
@@ -5062,13 +5077,16 @@ class XChemExplorer(QtGui.QApplication):
                         )
                         self.maps_table.setItem(current_row, column, cell_text)
                     elif header[0] == "Select":
-                        if new_xtal:
-                            run_dimple = QtGui.QCheckBox()
-                            run_dimple.toggle()
-                            self.maps_table.setCellWidget(
-                                current_row, column, run_dimple
-                            )
-                            run_dimple.setChecked(False)
+                        # Always recreate the checkbox; restore previous checked state
+                        previous_checked = False
+                        if xtal in self.initial_model_dimple_dict:
+                            try:
+                                previous_checked = self.initial_model_dimple_dict[xtal][0].isChecked()
+                            except RuntimeError:
+                                previous_checked = False
+                        run_dimple = QtGui.QCheckBox()
+                        run_dimple.setChecked(previous_checked)
+                        self.maps_table.setCellWidget(current_row, column, run_dimple)
                     elif header[0] == "Reference\nSpaceGroup":
                         cell_text = QtGui.QTableWidgetItem()
                         cell_text.setText(str(smallest_uc_difference[0][1]))
@@ -5087,43 +5105,40 @@ class XChemExplorer(QtGui.QApplication):
                         )
                         self.maps_table.setItem(current_row, column, cell_text)
                     elif header[0] == "Reference File":
-                        if new_xtal:
-                            reference_file_selection_combobox = QtGui.QComboBox()
-                            self.populate_reference_combobox(
-                                reference_file_selection_combobox
-                            )
-                            if (
-                                float(smallest_uc_difference[1])
-                                < self.allowed_unitcell_difference_percent
-                            ):
-                                index = reference_file_selection_combobox.findText(
-                                    str(smallest_uc_difference[0][0]),
-                                    QtCore.Qt.MatchFixedString,
+                        # Always create a fresh QComboBox; restore previous selection
+                        previous_selection = None
+                        if xtal in self.initial_model_dimple_dict:
+                            try:
+                                previous_selection = str(
+                                    self.initial_model_dimple_dict[xtal][1].currentText()
                                 )
-                                reference_file_selection_combobox.setCurrentIndex(index)
-                            else:
-                                reference_file_selection_combobox.setCurrentIndex(0)
-                            self.maps_table.setCellWidget(
-                                current_row, column, reference_file_selection_combobox
+                            except RuntimeError:
+                                previous_selection = None
+                        reference_file_selection_combobox = QtGui.QComboBox()
+                        self.populate_reference_combobox(
+                            reference_file_selection_combobox
+                        )
+                        if previous_selection:
+                            index = reference_file_selection_combobox.findText(
+                                previous_selection, QtCore.Qt.MatchFixedString
                             )
+                            reference_file_selection_combobox.setCurrentIndex(
+                                index if index >= 0 else 0
+                            )
+                        elif (
+                            float(smallest_uc_difference[1])
+                            < self.allowed_unitcell_difference_percent
+                        ):
+                            index = reference_file_selection_combobox.findText(
+                                str(smallest_uc_difference[0][0]),
+                                QtCore.Qt.MatchFixedString,
+                            )
+                            reference_file_selection_combobox.setCurrentIndex(index)
                         else:
-                            reference_file_selection_combobox = (
-                                self.initial_model_dimple_dict[xtal][1]
-                            )
-                            self.populate_reference_combobox(
-                                reference_file_selection_combobox
-                            )
-                            if (
-                                float(smallest_uc_difference[1])
-                                < self.allowed_unitcell_difference_percent
-                            ):
-                                index = reference_file_selection_combobox.findText(
-                                    str(smallest_uc_difference[0][0]),
-                                    QtCore.Qt.MatchFixedString,
-                                )
-                                reference_file_selection_combobox.setCurrentIndex(index)
-                            else:
-                                reference_file_selection_combobox.setCurrentIndex(0)
+                            reference_file_selection_combobox.setCurrentIndex(0)
+                        self.maps_table.setCellWidget(
+                            current_row, column, reference_file_selection_combobox
+                        )
                     else:
                         cell_text = QtGui.QTableWidgetItem()
                         cell_text.setText(str(db_dict[header[1]]))
@@ -5153,11 +5168,11 @@ class XChemExplorer(QtGui.QApplication):
                             elif str(db_dict[header[1]]) == "missing smiles":
                                 cell_text.setBackground(QtGui.QColor(240, 150, 20))
                         self.maps_table.setItem(current_row, column, cell_text)
-            if new_xtal:
-                self.initial_model_dimple_dict[xtal] = [
-                    run_dimple,
-                    reference_file_selection_combobox,
-                ]
+                if run_dimple is not None and reference_file_selection_combobox is not None:
+                    self.initial_model_dimple_dict[xtal] = [
+                        run_dimple,
+                        reference_file_selection_combobox,
+                    ]
 
     def preferences_data_to_copy_combobox_changed(self, i):
         text = str(self.preferences_data_to_copy_combobox.currentText())

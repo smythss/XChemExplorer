@@ -1364,6 +1364,7 @@ class run_pandda_two_analyse(QtCore.QThread):
         self.pandda2_env_path = pandda_params.get("pandda2_env_path", "")
         self.pandda2_dir = pandda_params.get("pandda2_dir", "")
         self.pandda2_sbatch_script = pandda_params.get("pandda2_sbatch_script", "")
+        self.max_rfree = pandda_params.get("max_rfree", "")
 
     def run(self):
         os.chdir(self.panddas_directory)
@@ -1406,8 +1407,18 @@ class run_pandda_two_analyse(QtCore.QThread):
             if ignore_zmap_checkbox.isChecked():
                 zmap.append(str(self.pandda_analyse_data_table.item(i, 0).text()))
 
-        # Build extra pandda args from keyword_arguments and ignore/char/zmap lists
+        # Build extra pandda args from keyword_arguments, Rfree filter, and ignore/char/zmap lists
         extra_args = str(self.keyword_arguments).strip() if self.keyword_arguments else ""
+        if self.max_rfree:
+            try:
+                float(self.max_rfree)
+                extra_args += " --max_rfree={}".format(self.max_rfree)
+            except ValueError:
+                self.Logfile.warning(
+                    "Invalid max_rfree value '{}' — ignoring Rfree filter.".format(
+                        self.max_rfree
+                    )
+                )
         if ignore:
             extra_args += ' ignore_datasets="{}"'.format(",".join(ignore))
         if char:
