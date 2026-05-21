@@ -2174,10 +2174,11 @@ class start_pandda_inspect(QtCore.QThread):
                 "pandda.inspect\n"
             )
         else:
+            ccp4_70 = os.getenv("CCP4_70") or "/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.0"
             Cmds = (
                 "#!" + os.getenv("SHELL") + "\n"
                 "unset PYTHONPATH\n"
-                "export CCP4=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.0\n"
+                "export CCP4=" + ccp4_70 + "\n"
                 '. "$CCP4/bin/ccp4.setup-sh"\n'
                 "cd " + self.panddas_directory + "\n"
                 "pandda.inspect\n"

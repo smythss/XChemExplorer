@@ -72,6 +72,16 @@ if [[ ! -d "${CCP4}" ]]; then
     exit 1
 fi
 
+# CCP4 7.0 — required by pandda.inspect (which is not compatible with 7.1+).
+# Override by setting CCP4_70 before running this script.
+: "${CCP4_70:=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.0}"
+
+if [[ ! -d "${CCP4_70}" ]]; then
+    echo "WARNING: CCP4 7.0 directory not found: ${CCP4_70}" >&2
+    echo "         pandda.inspect will not be available." >&2
+    echo "         Set CCP4_70 to override, e.g.: export CCP4_70=/path/to/ccp4-7.0" >&2
+fi
+
 # ---------------------------------------------------------------------------
 # PHENIX — optional, but recommended.
 # Set the PHENIX environment variable or edit the default path below.
@@ -94,6 +104,11 @@ fi
 # container.
 # ---------------------------------------------------------------------------
 BINDS="${CCP4}:${CCP4},${XCE_HOST_DIR}:${XCE_HOST_DIR}"
+
+# Bind CCP4 7.0 if it exists and differs from the main CCP4 installation.
+if [[ -d "${CCP4_70:-}" && "${CCP4_70}" != "${CCP4}" ]]; then
+    BINDS="${BINDS},${CCP4_70}:${CCP4_70}"
+fi
 CONTAINER_PATH="${CCP4}/bin"
 
 if [[ -d "${PHENIX:-}" ]]; then
@@ -168,6 +183,7 @@ APPTAINER_ARGS=(
     "--bind" "${BINDS},/vast/"
     "--env" "PATH=${CONTAINER_PATH}"
     "--env" "CCP4=${CCP4}"
+    "--env" "CCP4_70=${CCP4_70:-}"
     "--env" "XChemExplorer_DIR=${XCE_HOST_DIR}"
     "--env" "PYTHONPATH=${XCE_HOST_DIR}:/xce${PYTHONPATH:+:${PYTHONPATH}}"
 )
