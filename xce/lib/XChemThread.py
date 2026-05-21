@@ -2159,15 +2159,32 @@ class start_pandda_inspect(QtCore.QThread):
         self.Logfile = XChemLog.updateLog(xce_logfile)
 
     def run(self):
-        Cmds = (
-            "#!" + os.getenv("SHELL") + "\n"
-            "unset PYTHONPATH\n"
-            "module load buster/20240123\n"
-            "source /dls/science/groups/i04-1/software/pandda_0.2.12"
-            "/ccp4/ccp4-7.0/bin/ccp4.setup-sh\n"
-            "cd " + self.panddas_directory + "\n"
-            "pandda.inspect\n"
+        dls_ccp4_setup = (
+            "/dls/science/groups/i04-1/software/pandda_0.2.12"
+            "/ccp4/ccp4-7.0/bin/ccp4.setup-sh"
         )
+        wehi_ccp4_setup = (
+            "/stornext/System/data/software/rhel/9/base/structbio"
+            "/ccp4/ccp4-7.0/bin/ccp4.setup-sh"
+        )
+
+        if os.path.exists(dls_ccp4_setup):
+            Cmds = (
+                "#!" + os.getenv("SHELL") + "\n"
+                "unset PYTHONPATH\n"
+                "module load buster/20240123\n"
+                "source " + dls_ccp4_setup + "\n"
+                "cd " + self.panddas_directory + "\n"
+                "pandda.inspect\n"
+            )
+        else:
+            Cmds = (
+                "#!" + os.getenv("SHELL") + "\n"
+                "unset PYTHONPATH\n"
+                "source " + wehi_ccp4_setup + "\n"
+                "cd " + self.panddas_directory + "\n"
+                "pandda.inspect\n"
+            )
 
         self.Logfile.insert(
             "starting pandda.inspect with the following command:\n" + Cmds
