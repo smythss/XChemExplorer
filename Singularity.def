@@ -36,7 +36,7 @@ From: rockylinux:9
     dnf install -y --allowerasing \
         libXrender fontconfig libXext \
         glib2 libSM libXi libXrandr libXfixes libXcursor libXinerama \
-        libgomp libXdamage libxcb \
+        libgomp libXdamage libxcb libXcomposite \
         munge \
         libyaml \
         json-c \
