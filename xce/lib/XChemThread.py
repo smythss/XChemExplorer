@@ -2163,10 +2163,6 @@ class start_pandda_inspect(QtCore.QThread):
             "/dls/science/groups/i04-1/software/pandda_0.2.12"
             "/ccp4/ccp4-7.0/bin/ccp4.setup-sh"
         )
-        wehi_ccp4_setup = (
-            "/stornext/System/data/software/rhel/9/base/structbio"
-            "/ccp4/ccp4-7.0/bin/ccp4.setup-sh"
-        )
 
         if os.path.exists(dls_ccp4_setup):
             Cmds = (
@@ -2181,7 +2177,8 @@ class start_pandda_inspect(QtCore.QThread):
             Cmds = (
                 "#!" + os.getenv("SHELL") + "\n"
                 "unset PYTHONPATH\n"
-                "source " + wehi_ccp4_setup + "\n"
+                "export CCP4=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.0\n"
+                '. "$CCP4/bin/ccp4.setup-sh"\n'
                 "cd " + self.panddas_directory + "\n"
                 "pandda.inspect\n"
             )
