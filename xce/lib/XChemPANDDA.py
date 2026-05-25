@@ -1013,9 +1013,26 @@ class run_pandda_export(QtCore.QThread):
                 )
 
             else:
+                if self.initial_model_directory.startswith("/dls"):
+                    ccp4_setup = "module load ccp4/7.1.018\n"
+                else:
+                    ccp4_setup = (
+                        "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+                        ": \"${CCP4:=$CCP4_WEHI}\"\n"
+                        "export CCP4\n"
+                        "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
+                        "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
+                        "else\n"
+                        "    export CCP4_MASTER=\"$CCP4\"\n"
+                        "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
+                        "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
+                        "    export CLIBD=\"$CCP4/lib/data\"\n"
+                        "    export CLIB=\"$CCP4/lib\"\n"
+                        "fi\n"
+                    )
                 Cmds = (
-                    "module load ccp4/7.1.018\n"
-                    "pandda.export"
+                    ccp4_setup
+                    + "pandda.export"
                     " pandda_dir=%s" % self.panddas_directory
                     + " export_dir={0!s}".format(self.initial_model_directory)
                     + " {0!s}".format(select_dir_string_new_pannda)
@@ -1081,8 +1098,18 @@ class run_pandda_analyse(QtCore.QThread):
                 os.system("/bin/rm -fr %s" % self.panddas_directory)
             os.mkdir(self.panddas_directory)
             _ccp4_wehi = (
-                "export CCP4=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.0\n"
-                ". \"$CCP4/bin/ccp4.setup-sh\"\n"
+                "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+                ": \"${CCP4:=$CCP4_WEHI}\"\n"
+                "export CCP4\n"
+                "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
+                "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
+                "else\n"
+                "    export CCP4_MASTER=\"$CCP4\"\n"
+                "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
+                "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
+                "    export CLIBD=\"$CCP4/lib/data\"\n"
+                "    export CLIB=\"$CCP4/lib\"\n"
+                "fi\n"
             )
             if self.data_directory.startswith("/dls"):
                 self.select_ground_state_model = "module load ccp4/7.1.018\n"
@@ -1582,11 +1609,28 @@ class giant_cluster_datasets(QtCore.QThread):
             "running giant.cluster_mtzs_and_pdbs",
         )
 
+        if self.initial_model_directory.startswith("/dls"):
+            ccp4_setup = "module load ccp4/7.1.018\n"
+        else:
+            ccp4_setup = (
+                "CCP4_WEHI=/stornext/System/data/software/rhel/9/base/structbio/ccp4/ccp4-7.1\n"
+                ": \"${CCP4:=$CCP4_WEHI}\"\n"
+                "export CCP4\n"
+                "if [ -f \"$CCP4/bin/ccp4.setup-sh\" ]; then\n"
+                "    . \"$CCP4/bin/ccp4.setup-sh\"\n"
+                "else\n"
+                "    export CCP4_MASTER=\"$CCP4\"\n"
+                "    export PATH=\"$CCP4/bin:${PATH:-}\"\n"
+                "    export LD_LIBRARY_PATH=\"$CCP4/lib:${LD_LIBRARY_PATH:-}\"\n"
+                "    export CLIBD=\"$CCP4/lib/data\"\n"
+                "    export CLIB=\"$CCP4/lib\"\n"
+                "fi\n"
+            )
         Cmds = (
             "#!" + os.getenv("SHELL") + "\n"
             "unset PYTHONPATH\n"
-            "module load ccp4/7.1.018\n"
-            "giant.datasets.cluster %s/*/%s pdb_regex='%s/(.*)/%s'"
+            + ccp4_setup
+            + "giant.datasets.cluster %s/*/%s pdb_regex='%s/(.*)/%s'"
             " out_dir='%s/cluster_analysis'"
             % (
                 self.initial_model_directory,
