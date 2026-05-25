@@ -397,14 +397,12 @@ class synchronise_db_and_filesystem(QtCore.QThread):
             db_dict["RefinementStatus"] = "finished"
             pdb_info = XChemUtils.parse().dict_for_datasource_update("refine.pdb")
             db_dict.update(pdb_info)
-            if (
-                db_dict["RefinementOutcome"] == "None"
-                or db_dict["RefinementOutcome"] == ""
-            ):
-                db_dict["RefinementOutcome"] = "3 - In Refinement"
-            elif str(db_dict["RefinementOutcome"]).startswith("1"):
-                db_dict["RefinementOutcome"] = "3 - In Refinement"
-            elif str(db_dict["RefinementOutcome"]).startswith("2"):
+            # Only upgrade to "3 - In Refinement" if pandda has already identified
+            # a model ("2 - PANDDA model"). Do NOT upgrade from "1 - Analysis Pending"
+            # just because refine.pdb exists — phenix.ligand_pipeline creates refine.pdb
+            # as part of initial structure determination (pre-pandda), so its presence
+            # alone is not evidence of a post-pandda refinement.
+            if str(db_dict["RefinementOutcome"]).startswith("2"):
                 db_dict["RefinementOutcome"] = "3 - In Refinement"
         else:
             db_dict["RefinementPDB_latest"] = ""
