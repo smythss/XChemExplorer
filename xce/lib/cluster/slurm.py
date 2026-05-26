@@ -61,6 +61,10 @@ def get_token(fetch_password, error=None):
     global TOKEN
     global TOKEN_EXPIRY
 
+    # No bastion configured (e.g. WEHI/Milton direct sbatch) — token not needed
+    if not CLUSTER_BASTION:
+        return None
+
     if TOKEN is None or TOKEN_EXPIRY is None or TOKEN_EXPIRY < time.time() + 60:
         password_prompt = error + "\n" + "Password:" if error else "Password:"
         password = fetch_password(password_prompt)

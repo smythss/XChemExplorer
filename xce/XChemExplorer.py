@@ -4516,6 +4516,24 @@ class XChemExplorer(QtGui.QApplication):
             self.work_thread.start()
 
     def show_pandda_html_summary(self):
+        # For pandda2 runs: the HTML files are not generated natively.
+        # If they are absent but the events CSV exists, generate them now
+        # from the CSV outputs using the helper script.
+        if not os.path.isfile(self.pandda_initial_html_file):
+            events_csv = os.path.join(
+                self.panddas_directory, "analyses", "pandda_analyse_events.csv"
+            )
+            if os.path.isfile(events_csv):
+                helper = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "helpers",
+                    "pandda2_make_html_summaries.py",
+                )
+                os.system(
+                    "$CCP4/bin/ccp4-python {0} {1}".format(
+                        helper, self.panddas_directory
+                    )
+                )
         self.pandda_initial_html.load(QtCore.QUrl(self.pandda_initial_html_file))
         self.pandda_initial_html.show()
         self.pandda_analyse_html.load(QtCore.QUrl(self.pandda_analyse_html_file))

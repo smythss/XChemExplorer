@@ -1474,22 +1474,30 @@ class run_pandda_two_analyse(QtCore.QThread):
         )
 
         try:
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                close_fds=True,
+            # subprocess.Popen with PIPE fails inside Apptainer (ENOTCONN);
+            # use os.system() with file redirection instead.
+            import tempfile
+            out_file = tempfile.mktemp(suffix=".out")
+            err_file = tempfile.mktemp(suffix=".err")
+            cmd_str = " ".join(
+                '"{}"'.format(c) if " " in c else c for c in cmd
             )
-            stdout, stderr = proc.communicate()
-            if stdout:
-                self.Logfile.insert("pandda2 submission stdout:\n" + stdout)
-            if stderr:
-                self.Logfile.warning("pandda2 submission stderr:\n" + stderr)
-            if proc.returncode != 0:
+            ret = os.system(
+                "{} >{} 2>{}".format(cmd_str, out_file, err_file)
+            )
+            for path, log_fn, label in [
+                (out_file, self.Logfile.insert,  "pandda2 submission stdout"),
+                (err_file, self.Logfile.warning, "pandda2 submission stderr"),
+            ]:
+                if os.path.isfile(path):
+                    with open(path) as fh:
+                        text = fh.read().strip()
+                    os.remove(path)
+                    if text:
+                        log_fn("{}:\n{}".format(label, text))
+            if ret != 0:
                 self.Logfile.error(
-                    "pandda2 submission failed with return code {}".format(
-                        proc.returncode
-                    )
+                    "pandda2 submission failed with return code {}".format(ret)
                 )
         except Exception as e:
             self.Logfile.error("Failed to submit pandda2 job: {}".format(str(e)))
