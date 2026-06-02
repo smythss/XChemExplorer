@@ -2188,6 +2188,35 @@ class start_pandda_inspect(QtCore.QThread):
         os.system(Cmds)
 
 
+class start_pandda_inspect_py3(QtCore.QThread):
+    """Launch Coot 0.9.x (CCP4 7.1, Python 3 / GTK3) with the py3 pandda.inspect plugin.
+
+    The plugin script lives in $XChemExplorer_DIR/coot/inspect_pandda_analyse_py3.py
+    and opens its own folder-chooser dialog when the GUI starts.
+    """
+
+    def __init__(self, settings, xce_logfile):
+        QtCore.QThread.__init__(self)
+        self.panddas_directory = settings["panddas_directory"]
+        self.xce_logfile = xce_logfile
+        self.Logfile = XChemLog.updateLog(xce_logfile)
+        self.xce_dir = os.getenv("XChemExplorer_DIR", "")
+
+    def run(self):
+        inspect_script = os.path.join(
+            self.xce_dir, "coot", "inspect_pandda_analyse_py3.py"
+        )
+        Cmds = (
+            "#!" + os.getenv("SHELL") + "\n"
+            "cd " + os.getenv("HOME") + "\n"
+            "coot --no-guano --no-state-script --script " + inspect_script + "\n"
+        )
+        self.Logfile.insert(
+            "starting pandda.inspect (py3) with the following command:\n" + Cmds
+        )
+        os.system(Cmds)
+
+
 class start_pandda_2_inspect(QtCore.QThread):
     def __init__(self, settings, xce_logfile):
         QtCore.QThread.__init__(self)

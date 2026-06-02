@@ -4080,6 +4080,9 @@ class XChemExplorer(QtGui.QApplication):
         elif instruction == "pandda.inspect" or instruction == "PanDDA.inspect":
             self.run_pandda_inspect()
 
+        elif instruction == "PanDDA.inspect (CCP4 7.1)":
+            self.run_pandda_inspect_py3()
+
         # LEGACY: This feature is disabled because it relies on unsupported functionality - removed from GUI to prevent issues(2025-11-28)
         elif instruction == "pandda2.inspect":
             self.run_pandda_2_inspect()
@@ -4298,6 +4301,19 @@ class XChemExplorer(QtGui.QApplication):
         )
         print("==> XCE: starting pandda.inspect")
         self.work_thread = XChemThread.start_pandda_inspect(
+            self.settings, self.xce_logfile
+        )
+        self.connect(
+            self.work_thread, QtCore.SIGNAL("finished()"), self.thread_finished
+        )
+        self.work_thread.start()
+
+    def run_pandda_inspect_py3(self):
+        self.settings["panddas_directory"] = str(
+            self.pandda_output_data_dir_entry.text()
+        )
+        print("==> XCE: starting pandda.inspect (py3 / CCP4 7.1)")
+        self.work_thread = XChemThread.start_pandda_inspect_py3(
             self.settings, self.xce_logfile
         )
         self.connect(

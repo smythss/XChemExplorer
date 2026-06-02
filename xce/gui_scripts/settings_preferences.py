@@ -736,6 +736,7 @@ class setup:
             "PanDDA.analyse",
             "PanDDA.analyse (PanDDA2)",
             "PanDDA.inspect",
+            "PanDDA.inspect (CCP4 7.1)",
             # LEGACY: This feature is disabled because it relies on unsupported functionality - removed from GUI to prevent issues(2025-11-28)
             # "pandda2.inspect",
             # LEGACY: This feature is disabled because it relies on unsupported functionality - removed from GUI to prevent issues(2025-11-28)

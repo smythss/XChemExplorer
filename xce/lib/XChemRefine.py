@@ -1932,6 +1932,31 @@ class panddaRefine(object):
                 return None
 
         #######################################################
+        # Ensure multi-state-restraints.phenix.params exists.
+        # Older versions of giant (e.g. bundled with CCP4-7.1) only generate the
+        # refmac variant.  giant.quick_refine with program=phenix requires the phenix
+        # params file to be present even if it is empty (Phenix uses defaults).
+        phenix_params_path = os.path.join(
+            self.ProjectPath,
+            self.xtalID,
+            "cootOut",
+            "Refine_" + str(Serial),
+            "multi-state-restraints.phenix.params",
+        )
+        if not os.path.isfile(phenix_params_path):
+            Logfile.warning(
+                "multi-state-restraints.phenix.params was not created by"
+                " giant.make_restraints (older giant version); creating empty stub"
+                " so that giant.quick_refine program=phenix can proceed"
+            )
+            try:
+                open(phenix_params_path, "w").close()
+            except IOError as e:
+                Logfile.error(
+                    "could not create multi-state-restraints.phenix.params: %s" % e
+                )
+
+        #######################################################
         # we write 'REFINEMENT_IN_PROGRESS' immediately to avoid unncessary refinement
         os.chdir(os.path.join(self.ProjectPath, self.xtalID))
         os.system("touch REFINEMENT_IN_PROGRESS")
