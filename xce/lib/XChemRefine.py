@@ -1946,15 +1946,26 @@ class panddaRefine(object):
         if not os.path.isfile(phenix_params_path):
             Logfile.warning(
                 "multi-state-restraints.phenix.params was not created by"
-                " giant.make_restraints (older giant version); creating empty stub"
+                " giant.make_restraints (older giant version); creating stub"
                 " so that giant.quick_refine program=phenix can proceed"
             )
-            try:
-                open(phenix_params_path, "w").close()
-            except IOError as e:
-                Logfile.error(
-                    "could not create multi-state-restraints.phenix.params: %s" % e
+        # Always write the phenix params to ensure PDB output.
+        # Phenix 1.21+ defaults to mmCIF; downstream giant/phenix tools require PDB.
+        try:
+            with open(phenix_params_path, "w") as _f:
+                _f.write(
+                    "# Written by XChemExplorer\n"
+                    "# Force PDB output - Phenix 1.21+ defaults to mmCIF\n"
+                    "refinement.output.write_mmcif_file = False\n"
                 )
+            Logfile.insert(
+                "wrote multi-state-restraints.phenix.params"
+                " with refinement.output.write_mmcif_file = False"
+            )
+        except IOError as e:
+            Logfile.error(
+                "could not write multi-state-restraints.phenix.params: %s" % e
+            )
 
         #######################################################
         # we write 'REFINEMENT_IN_PROGRESS' immediately to avoid unncessary refinement
@@ -2147,6 +2158,26 @@ class panddaRefine(object):
             + "/Refine_"
             + str(panddaSerial)
             + "\n"
+            "# Phenix 1.21+ writes refine_N.pdb/mtz directly (no _001 suffix);\n"
+            "# rename to _001 convention before creating symlinks\n"
+            "[[ -f refine_"
+            + str(Serial)
+            + ".pdb && ! -L refine_"
+            + str(Serial)
+            + ".pdb ]] && mv refine_"
+            + str(Serial)
+            + ".pdb refine_"
+            + str(Serial)
+            + "_001.pdb\n"
+            "[[ -f refine_"
+            + str(Serial)
+            + ".mtz && ! -L refine_"
+            + str(Serial)
+            + ".mtz ]] && mv refine_"
+            + str(Serial)
+            + ".mtz refine_"
+            + str(Serial)
+            + "_001.mtz\n"
             "ln -sf "
             + self.ProjectPath
             + "/"
