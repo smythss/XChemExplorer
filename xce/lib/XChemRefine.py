@@ -1083,7 +1083,7 @@ class Refine(object):
                     + "\n"
                     "\n"
                     "giant.score_model pdb1=%s mtz1=%s pdb2=%s mtz2=%s"
-                    " res_names=LIG,UNL,DRG,FRG\n"
+                    " res_names=LIG,UNL,DRG,FRG || true\n"
                     % (pdb_one, mtz_one, pdb_two, mtz_two)
                 )
 
@@ -2011,7 +2011,7 @@ class panddaRefine(object):
                 )
                 spider_plot += (
                     "giant.score_model pdb1=%s mtz1=%s pdb2=%s mtz2=%s"
-                    " res_names=LIG,UNL,DRG,FRG\n"
+                    " res_names=LIG,UNL,DRG,FRG || true\n"
                     % (pdb_one, mtz_one, pdb_two, mtz_two)
                 )
 
@@ -2147,7 +2147,7 @@ class panddaRefine(object):
             + "/Refine_"
             + str(panddaSerial)
             + "\n"
-            "ln -s "
+            "ln -sf "
             + self.ProjectPath
             + "/"
             + self.xtalID
@@ -2165,7 +2165,7 @@ class panddaRefine(object):
             + str(Serial)
             + ".pdb"
             + "\n"
-            "ln -s "
+            "ln -sf "
             + self.ProjectPath
             + "/"
             + self.xtalID
@@ -2190,12 +2190,12 @@ class panddaRefine(object):
             "giant.split_conformations"
             " input.pdb='refine_%s.pdb'" % str(Serial) + " reset_occupancies=True"
             " suffix_prefix=output "
-            "\n" + spider_plot + "\n"
+            "\n" + (spider_plot + "\n" if spider_plot else "") + "\n"
             "phenix.molprobity refine_%s.pdb refine_%s.mtz\n" % (Serial, Serial)
             + "/bin/mv molprobity.out refine_molprobity.log\n"
             + ("module load phenix/1.20\n" if os.getcwd().startswith("/dls") else "")
-            + "mmtbx.validate_ligands refine_%s.pdb refine_%s.mtz LIG"
-            " > validate_ligands.txt\n" % (Serial, Serial)
+            + "mmtbx.validate_ligands refine_%s.pdb refine_%s.mtz"
+            " ligand_code=LIG > validate_ligands.txt\n" % (Serial, Serial)
             + "cd "
             + self.ProjectPath
             + "/"
