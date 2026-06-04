@@ -1951,16 +1951,17 @@ class panddaRefine(object):
             )
         # Always write the phenix params to ensure PDB output.
         # Phenix 1.21+ defaults to mmCIF; downstream giant/phenix tools require PDB.
+        # Correct top-level PHIL scope: output.write_model_cif_file (not refinement.output.write_mmcif_file)
         try:
             with open(phenix_params_path, "w") as _f:
                 _f.write(
                     "# Written by XChemExplorer\n"
                     "# Force PDB output - Phenix 1.21+ defaults to mmCIF\n"
-                    "refinement.output.write_mmcif_file = False\n"
+                    "output.write_model_cif_file = False\n"
                 )
             Logfile.insert(
                 "wrote multi-state-restraints.phenix.params"
-                " with refinement.output.write_mmcif_file = False"
+                " with output.write_model_cif_file = False"
             )
         except IOError as e:
             Logfile.error(
@@ -2109,7 +2110,11 @@ class panddaRefine(object):
 
         if make_all_links:
             add_links_line = (
-                "ln -s Refine_%s/refine_%s.split.bound-state.pdb"
+                "ln -s Refine_%s/refine_%s.pdb ./refine.pdb\n"
+                % (panddaSerial, Serial)
+                + "ln -s Refine_%s/refine_%s.mtz ./refine.mtz\n"
+                % (panddaSerial, Serial)
+                + "ln -s Refine_%s/refine_%s.split.bound-state.pdb"
                 " ./refine.split.bound-state.pdb\n"
                 % (
                     panddaSerial,
