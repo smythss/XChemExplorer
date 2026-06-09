@@ -1949,20 +1949,14 @@ class panddaRefine(object):
                 " giant.make_restraints (older giant version); creating stub"
                 " so that giant.quick_refine program=phenix can proceed"
             )
-        # Always write the phenix params to ensure PDB output.
-        # Phenix 1.21+ defaults to mmCIF; downstream giant/phenix tools require PDB.
-        # Correct top-level PHIL scope: output.write_model_cif_file (not refinement.output.write_mmcif_file)
+        # Write an empty phenix params stub so giant.quick_refine program=phenix
+        # finds the file (older giant versions only create the refmac params).
+        # Phenix 1.21+ already defaults to write_final_pdb_file=True and
+        # write_mtz_file=True, so no PHIL overrides are needed.
         try:
             with open(phenix_params_path, "w") as _f:
-                _f.write(
-                    "# Written by XChemExplorer\n"
-                    "# Force PDB output - Phenix 1.21+ defaults to mmCIF\n"
-                    "output.write_model_cif_file = False\n"
-                )
-            Logfile.insert(
-                "wrote multi-state-restraints.phenix.params"
-                " with output.write_model_cif_file = False"
-            )
+                _f.write("# Written by XChemExplorer\n")
+            Logfile.insert("wrote multi-state-restraints.phenix.params stub")
         except IOError as e:
             Logfile.error(
                 "could not write multi-state-restraints.phenix.params: %s" % e
