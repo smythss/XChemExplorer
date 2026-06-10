@@ -43,6 +43,13 @@ def _HBox(spacing=0):
     return Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=spacing)
 
 
+def _Label(text=''):
+    # GTK2 gtk.Label uses 'str' as param name, not 'label'
+    if _GTK2:
+        return Gtk.Label(str(text))
+    return Gtk.Label(label=text)
+
+
 def _ComboBoxText():
     if _GTK2:
         return Gtk.combo_box_new_text()
@@ -255,9 +262,9 @@ class inspect_gui(object):
         self.info_labels = {}
         for row, name in enumerate(_NAMES):
             lf = Gtk.Frame()
-            lf.add(Gtk.Label(label=name))
+            lf.add(_Label(name))
             _grid_attach(grid, lf, 0, row)
-            val = Gtk.Label(label='')
+            val = _Label('')
             vf = Gtk.Frame()
             vf.add(val)
             _grid_attach(grid, vf, 1, row)
