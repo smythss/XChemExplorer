@@ -13,23 +13,81 @@ import csv
 import logging
 
 # ---------------------------------------------------------------------------
-# GTK3 via gi.repository (replaces gtk / GTK2 from the original)
+# GTK2 / GTK3 import -- CCP4 7.1 ships a GTK2-based Coot environment.
+# gi.require_version raises ValueError (not ImportError) when GTK3 is absent,
+# so we must catch both.
 # ---------------------------------------------------------------------------
 try:
     import gi
     gi.require_version('Gtk', '3.0')
     from gi.repository import Gtk
-except ImportError:
-    import gtk as Gtk          # GTK2 fallback (shouldn't be needed with CCP4 7.1)
+    _GTK2 = False
+except (ImportError, ValueError):
+    import gtk as Gtk
+    _GTK2 = True
 
-# Orientation constants -- some Coot/CCP4 environments ship gi bindings where
-# Gtk.Orientation exists as a type but its named members are not populated.
-# Fall back to the underlying integer values (0=HORIZONTAL, 1=VERTICAL).
-try:
-    _HORIZ = Gtk.Orientation.HORIZONTAL
-    _VERT  = Gtk.Orientation.VERTICAL
-except AttributeError:
-    _HORIZ, _VERT = 0, 1
+
+# ---------------------------------------------------------------------------
+# GTK2 / GTK3 widget factory helpers
+# ---------------------------------------------------------------------------
+
+def _VBox(spacing=0):
+    if _GTK2:
+        return Gtk.VBox(False, spacing)
+    return Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=spacing)
+
+
+def _HBox(spacing=0):
+    if _GTK2:
+        return Gtk.HBox(False, spacing)
+    return Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=spacing)
+
+
+def _ComboBoxText():
+    if _GTK2:
+        return Gtk.combo_box_new_text()
+    return Gtk.ComboBoxText()
+
+
+def _make_info_grid(nrows, ncols):
+    if _GTK2:
+        t = Gtk.Table(nrows, ncols, False)
+        t.set_row_spacings(2)
+        t.set_col_spacings(2)
+        return t
+    g = Gtk.Grid()
+    g.set_row_homogeneous(False)
+    g.set_column_homogeneous(True)
+    g.set_row_spacing(2)
+    g.set_column_spacing(2)
+    return g
+
+
+def _grid_attach(container, widget, col, row):
+    if _GTK2:
+        container.attach(widget, col, col + 1, row, row + 1)
+    else:
+        container.attach(widget, col, row, 1, 1)
+
+
+def _RadioButton(label, group_widget=None):
+    if _GTK2:
+        grp = group_widget.get_group() if group_widget is not None else None
+        return Gtk.RadioButton(grp, label)
+    if group_widget is None:
+        return Gtk.RadioButton(label=label)
+    return Gtk.RadioButton.new_with_label_from_widget(group_widget, label)
+
+
+if _GTK2:
+    _FOLDER_ACTION = Gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER
+    _RESP_CANCEL   = Gtk.RESPONSE_CANCEL
+    _RESP_OK       = Gtk.RESPONSE_OK
+else:
+    _FOLDER_ACTION = Gtk.FileChooserAction.SELECT_FOLDER
+    _RESP_CANCEL   = Gtk.ResponseType.CANCEL
+    _RESP_OK       = Gtk.ResponseType.OK
+
 
 import coot
 import sys as _sys
@@ -165,11 +223,11 @@ class inspect_gui(object):
         self.window.set_default_size(400, 680)
         self.window.set_title("pandda inspect")
 
-        self.vbox = Gtk.Box(orientation=_VERT, spacing=4)
+        self.vbox = _VBox(4)
 
         # ---- PanDDA folder ----
         frame = Gtk.Frame(label='PanDDA folder')
-        hbox = Gtk.Box(orientation=_HORIZ, spacing=4)
+        hbox = _HBox(4)
         btn = Gtk.Button(label="Select pandda directory")
         btn.connect("clicked", self.select_pandda_folder)
         hbox.pack_start(btn, True, True, 0)
@@ -178,8 +236,8 @@ class inspect_gui(object):
 
         # ---- Event selection ----
         frame = Gtk.Frame(label='Event selection')
-        hbox = Gtk.Box(orientation=_HORIZ, spacing=4)
-        self.select_events_combobox = Gtk.ComboBoxText()
+        hbox = _HBox(4)
+        self.select_events_combobox = _ComboBoxText()
         for c in self.selection_criteria:
             self.select_events_combobox.append_text(c)
         hbox.pack_start(self.select_events_combobox, True, True, 0)
@@ -191,22 +249,18 @@ class inspect_gui(object):
 
         # ---- Info grid (replaces gtk.Table) ----
         outer_frame = Gtk.Frame()
-        grid = Gtk.Grid()
-        grid.set_row_homogeneous(False)
-        grid.set_column_homogeneous(True)
-        grid.set_row_spacing(2)
-        grid.set_column_spacing(2)
+        _NAMES = ['Crystal', 'Resolution', 'Rwork', 'Rfree', 'Event', 'Site', 'BDC']
+        grid = _make_info_grid(len(_NAMES), 2)
 
         self.info_labels = {}
-        for row, name in enumerate(
-                ['Crystal', 'Resolution', 'Rwork', 'Rfree', 'Event', 'Site', 'BDC']):
+        for row, name in enumerate(_NAMES):
             lf = Gtk.Frame()
             lf.add(Gtk.Label(label=name))
-            grid.attach(lf, 0, row, 1, 1)
+            _grid_attach(grid, lf, 0, row)
             val = Gtk.Label(label='')
             vf = Gtk.Frame()
             vf.add(val)
-            grid.attach(vf, 1, row, 1, 1)
+            _grid_attach(grid, vf, 1, row)
             self.info_labels[name] = val
 
         # Convenience aliases matching old attribute names
@@ -223,9 +277,9 @@ class inspect_gui(object):
 
         # ---- Navigator ----
         frame = Gtk.Frame(label='Navigator')
-        nav_vbox = Gtk.Box(orientation=_VERT, spacing=4)
+        nav_vbox = _VBox(4)
 
-        hbox = Gtk.Box(orientation=_HORIZ, spacing=4)
+        hbox = _HBox(4)
         for label, cb in [("<<< Event", self.previous_event),
                           ("Event >>>", self.next_event)]:
             b = Gtk.Button(label=label)
@@ -233,7 +287,7 @@ class inspect_gui(object):
             hbox.pack_start(b, True, True, 0)
         nav_vbox.pack_start(hbox, False, False, 0)
 
-        hbox = Gtk.Box(orientation=_HORIZ, spacing=4)
+        hbox = _HBox(4)
         for label, cb in [("<<< Site", self.previous_site),
                           ("Site >>>", self.next_site)]:
             b = Gtk.Button(label=label)
@@ -241,7 +295,7 @@ class inspect_gui(object):
             hbox.pack_start(b, True, True, 0)
         nav_vbox.pack_start(hbox, False, False, 0)
 
-        self.cb = Gtk.ComboBoxText()
+        self.cb = _ComboBoxText()
         self.cb.connect("changed", self.select_crystal)
         nav_vbox.pack_start(self.cb, False, False, 0)
 
@@ -253,7 +307,7 @@ class inspect_gui(object):
 
         # ---- Toggle maps ----
         frame = Gtk.Frame(label='Toggle Maps')
-        hbox = Gtk.Box(orientation=_HORIZ, spacing=4)
+        hbox = _HBox(4)
         for label, cb in [("event map",    self.toggle_emap),
                           ("Z-map",        self.toggle_zmap),
                           ("(2)fofc maps", self.toggle_x_ray_maps)]:
@@ -268,7 +322,7 @@ class inspect_gui(object):
 
         # ---- Ligand modelling ----
         frame = Gtk.Frame(label='Ligand Modeling')
-        hbox = Gtk.Box(orientation=_HORIZ, spacing=4)
+        hbox = _HBox(4)
         for label, cb in [("Place Ligand here",  self.place_ligand_here),
                           ("Merge Ligand",        self.merge_ligand_into_protein),
                           ("Revert to unfitted",  self.reset_to_unfitted)]:
@@ -280,16 +334,13 @@ class inspect_gui(object):
 
         # ---- Annotation radio buttons ----
         frame = Gtk.Frame(label='Annotation')
-        ann_vbox = Gtk.Box(orientation=_VERT, spacing=2)
+        ann_vbox = _VBox(2)
         self.ligand_confidence_button_list = []
         first_radio = None
         for item in self.ligand_confidence_button_labels:
+            btn = _RadioButton(item[1], first_radio)
             if first_radio is None:
-                btn = Gtk.RadioButton(label=item[1])
                 first_radio = btn
-            else:
-                btn = Gtk.RadioButton.new_with_label_from_widget(
-                    first_radio, item[1])
             btn.connect("toggled", self.set_ligand_confidence, item[1])
             self.ligand_confidence_button_list.append(btn)
             ann_vbox.pack_start(btn, False, False, 0)
@@ -299,7 +350,7 @@ class inspect_gui(object):
 
         # ---- Save ----
         frame = Gtk.Frame(label='Save')
-        hbox = Gtk.Box(orientation=_HORIZ, spacing=4)
+        hbox = _HBox(4)
         self.save_next_button = Gtk.Button(label="Save Model")
         self.save_next_button.connect("clicked", self.save_next)
         hbox.pack_start(self.save_next_button, True, True, 0)
@@ -350,13 +401,13 @@ class inspect_gui(object):
         dlg = Gtk.FileChooserDialog(
             title="Select PanDDA directory",
             parent=None,
-            action=Gtk.FileChooserAction.SELECT_FOLDER,
+            action=_FOLDER_ACTION,
         )
-        dlg.add_button("_Cancel", Gtk.ResponseType.CANCEL)
-        dlg.add_button("_Open",   Gtk.ResponseType.OK)
+        dlg.add_button("_Cancel", _RESP_CANCEL)
+        dlg.add_button("_Open",   _RESP_OK)
 
         response = dlg.run()
-        if response != Gtk.ResponseType.OK:
+        if response != _RESP_OK:
             dlg.destroy()
             return
 
