@@ -86,6 +86,12 @@ def _RadioButton(label, group_widget=None):
     return Gtk.RadioButton.new_with_label_from_widget(group_widget, label)
 
 
+def _CheckButton(label=''):
+    if _GTK2:
+        return Gtk.CheckButton(label)
+    return Gtk.CheckButton(label=label)
+
+
 if _GTK2:
     _FOLDER_ACTION = Gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER
     _RESP_CANCEL   = Gtk.RESPONSE_CANCEL
@@ -196,6 +202,12 @@ class inspect_gui(object):
         self.eventCSV  = None
         self.reset_params()
         self.merged = False
+
+        # CSV column indices initialised to None; set in parsepanddaDir
+        self.comment_index = None
+        self.interesting_index = None
+        # Flag to suppress widget callbacks while programmatically updating them
+        self._updating_widgets = False
 
         self.ligand_confidence_button_labels = [
             [0, 'unassigned'],
@@ -342,6 +354,9 @@ class inspect_gui(object):
         # ---- Annotation radio buttons ----
         frame = Gtk.Frame(label='Annotation')
         ann_vbox = _VBox(2)
+        self.interesting_checkbutton = _CheckButton('Interesting')
+        self.interesting_checkbutton.connect("toggled", self.set_interesting)
+        ann_vbox.pack_start(self.interesting_checkbutton, False, False, 0)
         self.ligand_confidence_button_list = []
         first_radio = None
         for item in self.ligand_confidence_button_labels:
@@ -353,6 +368,18 @@ class inspect_gui(object):
             ann_vbox.pack_start(btn, False, False, 0)
             btn.show()
         frame.add(ann_vbox)
+        self.vbox.pack_start(frame, False, False, 0)
+
+        # ---- Comment ----
+        frame = Gtk.Frame(label='Comment')
+        comment_vbox = _VBox(2)
+        self.comment_entry = Gtk.Entry()
+        self.comment_entry.connect("activate", self.save_comment)
+        comment_vbox.pack_start(self.comment_entry, True, True, 0)
+        save_comment_btn = Gtk.Button(label="Save Comment")
+        save_comment_btn.connect("clicked", self.save_comment)
+        comment_vbox.pack_start(save_comment_btn, False, False, 0)
+        frame.add(comment_vbox)
         self.vbox.pack_start(frame, False, False, 0)
 
         # ---- Save ----
@@ -389,6 +416,28 @@ class inspect_gui(object):
     def save_event_as_viewed(self):
         self.elist[self.index][self.viewed_index] = 'True'
         self.save_pandda_inspect_events_csv_file()
+
+    def save_comment(self, widget):
+        """Save the text in the comment entry to the current event's CSV row."""
+        if getattr(self, '_updating_widgets', False) or self.index < 1:
+            return
+        if self.comment_index is None:
+            return
+        comment = self.comment_entry.get_text()
+        self.elist[self.index][self.comment_index] = comment
+        self.save_pandda_inspect_events_csv_file()
+        self.logger.info("saved comment: '{0!s}'".format(comment))
+
+    def set_interesting(self, widget):
+        """Toggle the Interesting flag for the current event."""
+        if getattr(self, '_updating_widgets', False) or self.index < 1:
+            return
+        if self.interesting_index is None:
+            return
+        val = 'True' if widget.get_active() else 'False'
+        self.elist[self.index][self.interesting_index] = val
+        self.save_pandda_inspect_events_csv_file()
+        self.logger.info('interesting: {0!s}'.format(val))
 
     def set_ligand_confidence_button(self):
         found = False
@@ -530,6 +579,10 @@ class inspect_gui(object):
                 self.cluster_size_index = n
             elif item == 'Ligand Placed':
                 self.ligand_placed_index = n
+            elif item == 'Comment':
+                self.comment_index = n
+            elif item == 'Interesting':
+                self.interesting_index = n
 
         self.show_content_of_event_csv_file()
 
@@ -799,6 +852,8 @@ class inspect_gui(object):
         self.x = self.y = self.z = None
         self.resolution = self.r_free = self.r_work = None
         self.ligand_confidence = None
+        self.comment = ''
+        self.interesting = False
         self.merged = False
 
     def update_params(self):
@@ -827,6 +882,12 @@ class inspect_gui(object):
         self.r_work     = self.elist[self.index][self.r_work_index]
         self.ligand_confidence = \
             self.elist[self.index][self.ligand_confidence_index]
+        if self.comment_index is not None:
+            raw = self.elist[self.index][self.comment_index]
+            self.comment = '' if raw in ('None', 'none', '') else raw
+        if self.interesting_index is not None:
+            self.interesting = (
+                self.elist[self.index][self.interesting_index].lower() == 'true')
         return missing_files
 
     def update_labels(self):
@@ -837,6 +898,12 @@ class inspect_gui(object):
         self.event_label.set_label(str(self.event))
         self.site_label.set_label(str(self.site))
         self.bdc_label.set_label(str(self.bdc))
+        # Update comment and interesting widgets without triggering their
+        # save callbacks (which would overwrite CSV with stale data).
+        self._updating_widgets = True
+        self.comment_entry.set_text(self.comment)
+        self.interesting_checkbutton.set_active(self.interesting)
+        self._updating_widgets = False
 
     def recentre_on_event(self):
         coot.set_rotation_centre(self.x, self.y, self.z)
@@ -986,9 +1053,11 @@ class inspect_gui(object):
         self.index = -1
 
     def previous_event(self, widget):
+        self.save_comment(None)
         self.change_event(-1)
 
     def next_event(self, widget):
+        self.save_comment(None)
         self.save_event_as_viewed()
         for n, b in enumerate(self.ligand_confidence_button_list):
             if b.get_active():
