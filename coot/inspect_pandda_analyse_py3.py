@@ -79,8 +79,8 @@ def _grid_attach(container, widget, col, row):
 
 def _RadioButton(label, group_widget=None):
     if _GTK2:
-        grp = group_widget.get_group() if group_widget is not None else None
-        return Gtk.RadioButton(grp, label)
+        # GTK2: first arg is a RadioButton instance (or None), not a group list
+        return Gtk.RadioButton(group_widget, label)
     if group_widget is None:
         return Gtk.RadioButton(label=label)
     return Gtk.RadioButton.new_with_label_from_widget(group_widget, label)
