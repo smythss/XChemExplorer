@@ -410,6 +410,7 @@ class setup:
             "Dimple\nRfree",
             "Refinement\nRcryst",
             "Refinement\nRfree",
+            "Ligand\nReadout",
             "DataProcessing\nSpaceGroup",
             "Reference\nSpaceGroup",
             "Difference\nUC Volume (%)",

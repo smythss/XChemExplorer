@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import os
 import sys
 
@@ -176,5 +177,42 @@ if __name__ == "__main__":
                 "DataProcessingSpaceGroup": pdb["SpaceGroup"],
                 "DataProcessingPointGroup": pdb["PointGroup"],
             }
+
+            readout_json = os.path.join(
+                inital_model_directory, xtal, "ligand_fit_readout.json"
+            )
+            if os.path.isfile(readout_json):
+                try:
+                    with open(readout_json) as fh:
+                        readout = json.load(fh)
+
+                    confidence_label = str(
+                        readout.get("confidence_label", "")
+                    ).strip()
+                    delta_rfree = readout.get("selected_minus_best_rfree", None)
+                    hetatm_count = readout.get(
+                        "selected_non_water_hetatm_occupancy", {}
+                    ).get("residue_count", None)
+                    failed_flag = bool(readout.get("failed_flag", False))
+
+                    parts = []
+                    if confidence_label:
+                        parts.append(confidence_label)
+                    if failed_flag:
+                        parts.append("FAILED")
+                    if delta_rfree is not None:
+                        try:
+                            parts.append("dRfree={0:.4f}".format(float(delta_rfree)))
+                        except (TypeError, ValueError):
+                            parts.append("dRfree={0}".format(str(delta_rfree)))
+                    if hetatm_count is not None:
+                        parts.append("hetatm_res={0}".format(str(hetatm_count)))
+
+                    ref_db_dict["RefinementLigandReadout"] = " | ".join(parts)
+                except (IOError, ValueError, TypeError):
+                    ref_db_dict["RefinementLigandReadout"] = ""
+            else:
+                ref_db_dict["RefinementLigandReadout"] = ""
+
             print("==> xce: updating data source with phenix.ligand_pipeline results from refine.pdb")
             db.update_data_source(xtal, ref_db_dict)

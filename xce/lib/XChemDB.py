@@ -239,6 +239,12 @@ class data_source:
             ["RefinementRcrystTraficLight", "RefinementRcrystTraficLight", "TEXT", 0],
             ["RefinementRfree", "Refinement\nRfree", "TEXT", 1],
             ["RefinementRfreeTraficLight", "RefinementRfreeTraficLight", "TEXT", 0],
+            [
+                "RefinementLigandReadout",
+                "Ligand\nReadout",
+                "TEXT",
+                1,
+            ],
             ["RefinementSpaceGroup", "Refinement\nSpace Group", "TEXT", 1],
             ["RefinementLigandCC", "Ligand CC", "TEXT", 0],
             ["RefinementRmsdBonds", "RefinementRmsdBonds", "TEXT", 1],
