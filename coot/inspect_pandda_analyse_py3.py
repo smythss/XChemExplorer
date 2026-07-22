@@ -203,20 +203,17 @@ class inspect_gui(object):
         self.reset_params()
         self.merged = False
 
-        # CSV column indices initialised to None; set in parsepanddaDir
-        self.comment_index = None
-        self.interesting_index = None
-        # Flag to suppress widget callbacks while programmatically updating them
-        self._updating_widgets = False
+        # CSV column indices; set in parsepanddaDir
+        self.comment_index            = None
+        self.interesting_index        = None
+        self.ligand_placed_index      = None
+        self.ligand_confidence_index  = None
+        self.slist_site_num_index     = None
+        self.slist_site_name_index    = None
+        self.slist_site_comment_index = None
 
-        self.ligand_confidence_button_labels = [
-            [0, 'unassigned'],
-            [1, 'no ligand bound'],
-            [2, 'unknown ligand'],
-            [3, 'ambiguous density'],
-            [4, 'event map only'],
-            [5, '2fofc map'],
-        ]
+        # Suppress widget callbacks during programmatic updates
+        self._updating_widgets = False
 
         self.selection_criteria = [
             'show all events',
@@ -225,8 +222,8 @@ class inspect_gui(object):
             'show not viewed events',
             'show unassigned',
             'show no ligands bound',
-            'show unknown ligands',
             'show low confidence ligands',
+            'show medium confidence ligands',
             'show high confidence ligands',
         ]
         self.selected_selection_criterion = None
@@ -238,158 +235,240 @@ class inspect_gui(object):
     def startGUI(self):
         self.window = Gtk.Window()
         self.window.connect("delete-event", lambda w, e: Gtk.main_quit())
-        self.window.set_border_width(10)
-        self.window.set_default_size(400, 680)
-        self.window.set_title("pandda inspect")
+        self.window.set_border_width(6)
+        self.window.set_default_size(750, 900)
+        self.window.set_title("PANDDA inspect")
 
         self.vbox = _VBox(4)
 
-        # ---- PanDDA folder ----
-        frame = Gtk.Frame(label='PanDDA folder')
-        hbox = _HBox(4)
-        btn = Gtk.Button(label="Select pandda directory")
-        btn.connect("clicked", self.select_pandda_folder)
-        hbox.pack_start(btn, True, True, 0)
-        frame.add(hbox)
-        self.vbox.pack_start(frame, False, False, 0)
-
-        # ---- Event selection ----
-        frame = Gtk.Frame(label='Event selection')
-        hbox = _HBox(4)
-        self.select_events_combobox = _ComboBoxText()
-        for c in self.selection_criteria:
-            self.select_events_combobox.append_text(c)
-        hbox.pack_start(self.select_events_combobox, True, True, 0)
+        # ---- Row 1: Quit / Summary / Update HTML / Progress / Go to Dataset ----
+        row1 = _HBox(6)
+        for lbl, cb in [("Quit",        lambda w: Gtk.main_quit()),
+                        ("Summary",     self.show_summary),
+                        ("Update HTML", self.update_html)]:
+            b = Gtk.Button(label=lbl)
+            b.connect("clicked", cb)
+            row1.pack_start(b, False, False, 0)
+        prog_vbox = _VBox(1)
+        prog_vbox.pack_start(_Label("Overall Inspection Event/Site Progress:"),
+                             False, False, 0)
+        self.crystal_progressbar = Gtk.ProgressBar()
+        prog_vbox.pack_start(self.crystal_progressbar, False, False, 0)
+        row1.pack_start(prog_vbox, True, True, 4)
+        goto_hbox = _HBox(2)
+        goto_hbox.pack_start(_Label("Go to Dataset:"), False, False, 0)
+        self.goto_entry = Gtk.Entry()
+        self.goto_entry.set_width_chars(18)
+        self.goto_entry.connect("activate", self.go_to_dataset)
+        goto_hbox.pack_start(self.goto_entry, False, False, 0)
         go_btn = Gtk.Button(label="Go")
-        go_btn.connect("clicked", self.select_events)
-        hbox.pack_start(go_btn, False, False, 0)
-        frame.add(hbox)
-        self.vbox.pack_start(frame, False, False, 0)
+        go_btn.connect("clicked", self.go_to_dataset)
+        goto_hbox.pack_start(go_btn, False, False, 0)
+        row1.pack_start(goto_hbox, False, False, 0)
+        self.vbox.pack_start(row1, False, False, 0)
 
-        # ---- Info grid (replaces gtk.Table) ----
-        outer_frame = Gtk.Frame()
-        _NAMES = ['Crystal', 'Resolution', 'Rwork', 'Rfree', 'Event', 'Site', 'BDC']
-        grid = _make_info_grid(len(_NAMES), 2)
+        # ---- Row 2: Event counter + site navigation ----
+        row2 = _HBox(6)
+        self.event_counter_label = _Label("Event  -  of  -")
+        row2.pack_start(self.event_counter_label, False, False, 4)
+        for lbl, cb in [("<<< Go to Prev Site <<<", self.previous_site),
+                        (">>> Go to Next Site >>>", self.next_site)]:
+            b = Gtk.Button(label=lbl)
+            b.connect("clicked", cb)
+            row2.pack_start(b, True, True, 0)
+        self.vbox.pack_start(row2, False, False, 0)
 
+        # ---- Row 3: Site counter + unviewed / modelled ----
+        row3 = _HBox(6)
+        self.site_counter_label = _Label("Site  -  of  -")
+        row3.pack_start(self.site_counter_label, False, False, 4)
+        for lbl, cb in [(">>> Go to Next Unviewed >>>", self.next_unviewed_event),
+                        (">>> Go to Next Modelled >>>", self.next_modelled_event)]:
+            b = Gtk.Button(label=lbl)
+            b.connect("clicked", cb)
+            row3.pack_start(b, True, True, 0)
+        self.vbox.pack_start(row3, False, False, 0)
+
+        # ---- Row 4: Prev / Next navigation ----
+        row4 = _HBox(4)
+        for lbl, cb in [
+            ("<<< Prev <<<\n(Don't Save Model)", self.previous_event),
+            (">>> Next >>>\n(Don't Save Model)", self.next_event_no_save),
+            (">>> Next >>>\n(Save Model)",        self.next_event_save),
+        ]:
+            b = Gtk.Button(label=lbl)
+            b.connect("clicked", cb)
+            row4.pack_start(b, True, True, 0)
+        self.vbox.pack_start(row4, False, False, 0)
+
+        # ---- Info grid + Modelling buttons ----
+        info_outer = _HBox(6)
+        _INFO_ROWS = [
+            ('Dataset ID',      'dataset_id'),
+            ('Event #',         'event_num'),
+            ('Site #',          'site_num'),
+            ('1 - BDC',         'bdc'),
+            ('Resolution',      'resolution'),
+            ('R-Free / R-Work', 'rfree_rwork'),
+        ]
+        info_grid = _make_info_grid(len(_INFO_ROWS), 2)
         self.info_labels = {}
-        for row, name in enumerate(_NAMES):
+        for row, (name, key) in enumerate(_INFO_ROWS):
             lf = Gtk.Frame()
             lf.add(_Label(name))
-            _grid_attach(grid, lf, 0, row)
+            _grid_attach(info_grid, lf, 0, row)
             val = _Label('')
             vf = Gtk.Frame()
             vf.add(val)
-            _grid_attach(grid, vf, 1, row)
-            self.info_labels[name] = val
-
-        # Convenience aliases matching old attribute names
-        self.xtal_label       = self.info_labels['Crystal']
-        self.resolution_label = self.info_labels['Resolution']
-        self.r_work_label     = self.info_labels['Rwork']
-        self.r_free_label     = self.info_labels['Rfree']
-        self.event_label      = self.info_labels['Event']
-        self.site_label       = self.info_labels['Site']
-        self.bdc_label        = self.info_labels['BDC']
-
-        outer_frame.add(grid)
-        self.vbox.pack_start(outer_frame, False, False, 0)
-
-        # ---- Navigator ----
-        frame = Gtk.Frame(label='Navigator')
-        nav_vbox = _VBox(4)
-
-        hbox = _HBox(4)
-        for label, cb in [("<<< Event", self.previous_event),
-                          ("Event >>>", self.next_event)]:
-            b = Gtk.Button(label=label)
+            _grid_attach(info_grid, vf, 1, row)
+            self.info_labels[key] = val
+        self.xtal_label       = self.info_labels['dataset_id']
+        self.event_label      = self.info_labels['event_num']
+        self.site_label       = self.info_labels['site_num']
+        self.bdc_label        = self.info_labels['bdc']
+        self.resolution_label = self.info_labels['resolution']
+        self.r_free_label     = self.info_labels['rfree_rwork']
+        self.r_work_label     = self.info_labels['rfree_rwork']
+        info_outer.pack_start(info_grid, True, True, 0)
+        mod_vbox = _VBox(2)
+        for lbl, cb in [
+            ("Merge Ligand\nWith Model",    self.merge_ligand_into_protein),
+            ("Save Model",                  self.save_model),
+            ("Move New\nLigand Here",       self.place_ligand_here),
+            ("Reload Last\nSaved Model",    self.reload_last_saved_model),
+            ("Open Next Ligand",            self.open_next_ligand),
+            ("Reset to\nUnfitted Model",    self.reset_to_unfitted),
+        ]:
+            b = Gtk.Button(label=lbl)
             b.connect("clicked", cb)
-            hbox.pack_start(b, True, True, 0)
-        nav_vbox.pack_start(hbox, False, False, 0)
+            mod_vbox.pack_start(b, False, False, 0)
+        info_outer.pack_start(mod_vbox, False, False, 0)
+        self.vbox.pack_start(info_outer, False, False, 0)
 
-        hbox = _HBox(4)
-        for label, cb in [("<<< Site", self.previous_site),
-                          ("Site >>>", self.next_site)]:
-            b = Gtk.Button(label=label)
-            b.connect("clicked", cb)
-            hbox.pack_start(b, True, True, 0)
-        nav_vbox.pack_start(hbox, False, False, 0)
-
-        self.cb = _ComboBoxText()
-        self.cb.connect("changed", self.select_crystal)
-        nav_vbox.pack_start(self.cb, False, False, 0)
-
-        self.crystal_progressbar = Gtk.ProgressBar()
-        nav_vbox.pack_start(self.crystal_progressbar, False, False, 0)
-
-        frame.add(nav_vbox)
-        self.vbox.pack_start(frame, False, False, 0)
-
-        # ---- Toggle maps ----
-        frame = Gtk.Frame(label='Toggle Maps')
-        hbox = _HBox(4)
-        for label, cb in [("event map",    self.toggle_emap),
-                          ("Z-map",        self.toggle_zmap),
-                          ("(2)fofc maps", self.toggle_x_ray_maps)]:
-            b = Gtk.Button(label=label)
-            b.connect("clicked", cb)
-            hbox.pack_start(b, True, True, 0)
-        self.toggle_average_map_button = Gtk.Button(label="average map")
-        self.toggle_average_map_button.connect("clicked", self.toggle_average_map)
-        hbox.pack_start(self.toggle_average_map_button, True, True, 0)
-        frame.add(hbox)
-        self.vbox.pack_start(frame, False, False, 0)
-
-        # ---- Ligand modelling ----
-        frame = Gtk.Frame(label='Ligand Modeling')
-        hbox = _HBox(4)
-        for label, cb in [("Place Ligand here",  self.place_ligand_here),
-                          ("Merge Ligand",        self.merge_ligand_into_protein),
-                          ("Revert to unfitted",  self.reset_to_unfitted)]:
-            b = Gtk.Button(label=label)
-            b.connect("clicked", cb)
-            hbox.pack_start(b, True, True, 0)
-        frame.add(hbox)
-        self.vbox.pack_start(frame, False, False, 0)
-
-        # ---- Annotation radio buttons ----
-        frame = Gtk.Frame(label='Annotation')
-        ann_vbox = _VBox(2)
-        self.interesting_checkbutton = _CheckButton('Interesting')
-        self.interesting_checkbutton.connect("toggled", self.set_interesting)
-        ann_vbox.pack_start(self.interesting_checkbutton, False, False, 0)
-        self.ligand_confidence_button_list = []
-        first_radio = None
-        for item in self.ligand_confidence_button_labels:
-            btn = _RadioButton(item[1], first_radio)
-            if first_radio is None:
-                first_radio = btn
-            btn.connect("toggled", self.set_ligand_confidence, item[1])
-            self.ligand_confidence_button_list.append(btn)
-            ann_vbox.pack_start(btn, False, False, 0)
-            btn.show()
-        frame.add(ann_vbox)
-        self.vbox.pack_start(frame, False, False, 0)
-
-        # ---- Comment ----
-        frame = Gtk.Frame(label='Comment')
-        comment_vbox = _VBox(2)
+        # ---- Record Event Information ----
+        ev_frame = Gtk.Frame(
+            label='Record Event Information (this event only)')
+        ev_vbox = _VBox(4)
+        comment_hbox = _HBox(4)
+        comment_hbox.pack_start(_Label("Event Comment:"), False, False, 0)
         self.comment_entry = Gtk.Entry()
         self.comment_entry.connect("activate", self.save_comment)
-        comment_vbox.pack_start(self.comment_entry, True, True, 0)
-        save_comment_btn = Gtk.Button(label="Save Comment")
-        save_comment_btn.connect("clicked", self.save_comment)
-        comment_vbox.pack_start(save_comment_btn, False, False, 0)
-        frame.add(comment_vbox)
-        self.vbox.pack_start(frame, False, False, 0)
+        comment_hbox.pack_start(self.comment_entry, True, True, 0)
+        ev_vbox.pack_start(comment_hbox, False, False, 0)
+        ann_hbox = _HBox(8)
+        # Interesting
+        int_vbox = _VBox(2)
+        self.interesting_radio_yes = _RadioButton("Mark Event as Interesting")
+        self.interesting_radio_no  = _RadioButton(
+            "Mark Event as Not Interesting", self.interesting_radio_yes)
+        self.interesting_radio_no.set_active(True)
+        self.interesting_radio_yes.connect("toggled", self.set_interesting_radio)
+        self.interesting_radio_no.connect("toggled",  self.set_interesting_radio)
+        int_vbox.pack_start(self.interesting_radio_yes, False, False, 0)
+        int_vbox.pack_start(self.interesting_radio_no,  False, False, 0)
+        ann_hbox.pack_start(int_vbox, True, True, 0)
+        # Ligand placed
+        lig_vbox = _VBox(2)
+        self.ligand_placed_radio_yes = _RadioButton("Ligand Placed")
+        self.ligand_placed_radio_no  = _RadioButton(
+            "No Ligand Placed", self.ligand_placed_radio_yes)
+        self.ligand_placed_radio_no.set_active(True)
+        self.ligand_placed_radio_yes.connect("toggled", self.set_ligand_placed_radio)
+        self.ligand_placed_radio_no.connect("toggled",  self.set_ligand_placed_radio)
+        lig_vbox.pack_start(self.ligand_placed_radio_yes, False, False, 0)
+        lig_vbox.pack_start(self.ligand_placed_radio_no,  False, False, 0)
+        ann_hbox.pack_start(lig_vbox, True, True, 0)
+        # Confidence
+        conf_vbox = _VBox(2)
+        self.confidence_radio_high   = _RadioButton("Model: High Confidence")
+        self.confidence_radio_medium = _RadioButton(
+            "Model: Medium Confidence", self.confidence_radio_high)
+        self.confidence_radio_low    = _RadioButton(
+            "Model: Low Confidence",    self.confidence_radio_high)
+        self.confidence_radio_low.set_active(True)
+        for r in (self.confidence_radio_high,
+                  self.confidence_radio_medium,
+                  self.confidence_radio_low):
+            r.connect("toggled", self.set_confidence_radio)
+            conf_vbox.pack_start(r, False, False, 0)
+        ann_hbox.pack_start(conf_vbox, True, True, 0)
+        ev_vbox.pack_start(ann_hbox, False, False, 0)
+        ev_frame.add(ev_vbox)
+        self.vbox.pack_start(ev_frame, False, False, 0)
 
-        # ---- Save ----
-        frame = Gtk.Frame(label='Save')
-        hbox = _HBox(4)
-        self.save_next_button = Gtk.Button(label="Save Model")
-        self.save_next_button.connect("clicked", self.save_next)
-        hbox.pack_start(self.save_next_button, True, True, 0)
-        frame.add(hbox)
-        self.vbox.pack_start(frame, False, False, 0)
+        # ---- Record Site Information ----
+        site_frame = Gtk.Frame(
+            label='Record Site Information (for all events with this site)')
+        site_grid = _make_info_grid(2, 2)
+        lf = Gtk.Frame()
+        lf.add(_Label("Name:"))
+        _grid_attach(site_grid, lf, 0, 0)
+        self.site_name_entry = Gtk.Entry()
+        self.site_name_entry.connect("activate", self.save_site_info)
+        _grid_attach(site_grid, self.site_name_entry, 1, 0)
+        lf2 = Gtk.Frame()
+        lf2.add(_Label("Comment:"))
+        _grid_attach(site_grid, lf2, 0, 1)
+        self.site_comment_entry = Gtk.Entry()
+        self.site_comment_entry.connect("activate", self.save_site_info)
+        _grid_attach(site_grid, self.site_comment_entry, 1, 1)
+        site_frame.add(site_grid)
+        self.vbox.pack_start(site_frame, False, False, 0)
+
+        # ---- Dataset selector + PanDDA folder ----
+        sel_frame = Gtk.Frame(label='Dataset selector')
+        sel_hbox = _HBox(4)
+        self.cb = _ComboBoxText()
+        self.cb.connect("changed", self.select_crystal)
+        sel_hbox.pack_start(self.cb, True, True, 0)
+        folder_btn = Gtk.Button(label="Select pandda directory")
+        folder_btn.connect("clicked", self.select_pandda_folder)
+        sel_hbox.pack_start(folder_btn, False, False, 0)
+        sel_frame.add(sel_hbox)
+        self.vbox.pack_start(sel_frame, False, False, 0)
+
+        # ---- Event filter ----
+        filter_frame = Gtk.Frame(label='Event filter')
+        filter_hbox = _HBox(4)
+        self.select_events_combobox = _ComboBoxText()
+        for c in self.selection_criteria:
+            self.select_events_combobox.append_text(c)
+        filter_hbox.pack_start(self.select_events_combobox, True, True, 0)
+        filter_btn = Gtk.Button(label="Apply")
+        filter_btn.connect("clicked", self.select_events)
+        filter_hbox.pack_start(filter_btn, False, False, 0)
+        filter_frame.add(filter_hbox)
+        self.vbox.pack_start(filter_frame, False, False, 0)
+
+        # ---- Toggle maps ----
+        maps_frame = Gtk.Frame(label='Toggle Maps')
+        maps_hbox = _HBox(4)
+        for lbl, cb in [("event map",    self.toggle_emap),
+                        ("Z-map",        self.toggle_zmap),
+                        ("(2)fofc maps", self.toggle_x_ray_maps)]:
+            b = Gtk.Button(label=lbl)
+            b.connect("clicked", cb)
+            maps_hbox.pack_start(b, True, True, 0)
+        self.toggle_average_map_button = Gtk.Button(label="average map")
+        self.toggle_average_map_button.connect("clicked", self.toggle_average_map)
+        maps_hbox.pack_start(self.toggle_average_map_button, True, True, 0)
+        maps_frame.add(maps_hbox)
+        self.vbox.pack_start(maps_frame, False, False, 0)
+
+        # ---- Miscellaneous buttons ----
+        misc_frame = Gtk.Frame(label='Miscellaneous buttons')
+        misc_hbox = _HBox(4)
+        for lbl, cb in [
+            ("Load input\nmtz file",                    self.load_input_mtz_clicked),
+            ("Load average map",                        self.load_average_map_clicked),
+            ("Load unfitted model\n(for comparison only)", self.load_unfitted_model_clicked),
+            ("Create new ligand",                       self.create_new_ligand),
+        ]:
+            b = Gtk.Button(label=lbl)
+            b.connect("clicked", cb)
+            misc_hbox.pack_start(b, True, True, 0)
+        misc_frame.add(misc_hbox)
+        self.vbox.pack_start(misc_frame, False, False, 0)
 
         self.window.add(self.vbox)
         self.window.show_all()
@@ -408,17 +487,77 @@ class inspect_gui(object):
     # Annotation callbacks
     # ------------------------------------------------------------------
 
-    def set_ligand_confidence(self, widget, data=None):
-        if widget.get_active():
-            self.elist[self.index][self.ligand_confidence_index] = data
-            self.save_pandda_inspect_events_csv_file()
+    def set_confidence_radio(self, widget):
+        """Save confidence radio selection to CSV."""
+        if not widget.get_active():
+            return
+        if getattr(self, '_updating_widgets', False) or self.index < 1:
+            return
+        if self.ligand_confidence_index is None:
+            return
+        if widget is self.confidence_radio_high:
+            val = 'High Confidence'
+        elif widget is self.confidence_radio_medium:
+            val = 'Medium Confidence'
+        else:
+            val = 'Low Confidence'
+        self.elist[self.index][self.ligand_confidence_index] = val
+        self.save_pandda_inspect_events_csv_file()
+        self.logger.info('confidence: {0!s}'.format(val))
+
+    def set_interesting_radio(self, widget):
+        """Save interesting flag to CSV."""
+        if not widget.get_active():
+            return
+        if getattr(self, '_updating_widgets', False) or self.index < 1:
+            return
+        if self.interesting_index is None:
+            return
+        val = 'True' if widget is self.interesting_radio_yes else 'False'
+        self.elist[self.index][self.interesting_index] = val
+        self.save_pandda_inspect_events_csv_file()
+        self.logger.info('interesting: {0!s}'.format(val))
+
+    def set_ligand_placed_radio(self, widget):
+        """Save ligand-placed flag to CSV."""
+        if not widget.get_active():
+            return
+        if getattr(self, '_updating_widgets', False) or self.index < 1:
+            return
+        if self.ligand_placed_index is None:
+            return
+        val = 'True' if widget is self.ligand_placed_radio_yes else 'False'
+        self.elist[self.index][self.ligand_placed_index] = val
+        self.save_pandda_inspect_events_csv_file()
+        self.logger.info('ligand placed: {0!s}'.format(val))
+
+    def _set_annotation_buttons(self):
+        """Update annotation widgets to reflect current event data."""
+        self._updating_widgets = True
+        lc = self.ligand_confidence or ''
+        # Normalise old-style values
+        if lc == '2fofc map':
+            lc = 'High Confidence'
+        elif lc == 'event map only':
+            lc = 'Medium Confidence'
+        if lc == 'High Confidence':
+            self.confidence_radio_high.set_active(True)
+        elif lc == 'Medium Confidence':
+            self.confidence_radio_medium.set_active(True)
+        else:
+            self.confidence_radio_low.set_active(True)
+        self.interesting_radio_yes.set_active(self.interesting)
+        self.interesting_radio_no.set_active(not self.interesting)
+        self.ligand_placed_radio_yes.set_active(self.ligand_placed)
+        self.ligand_placed_radio_no.set_active(not self.ligand_placed)
+        self._updating_widgets = False
 
     def save_event_as_viewed(self):
         self.elist[self.index][self.viewed_index] = 'True'
         self.save_pandda_inspect_events_csv_file()
 
     def save_comment(self, widget):
-        """Save the text in the comment entry to the current event's CSV row."""
+        """Save the comment entry text to the current event's CSV row."""
         if getattr(self, '_updating_widgets', False) or self.index < 1:
             return
         if self.comment_index is None:
@@ -427,27 +566,6 @@ class inspect_gui(object):
         self.elist[self.index][self.comment_index] = comment
         self.save_pandda_inspect_events_csv_file()
         self.logger.info("saved comment: '{0!s}'".format(comment))
-
-    def set_interesting(self, widget):
-        """Toggle the Interesting flag for the current event."""
-        if getattr(self, '_updating_widgets', False) or self.index < 1:
-            return
-        if self.interesting_index is None:
-            return
-        val = 'True' if widget.get_active() else 'False'
-        self.elist[self.index][self.interesting_index] = val
-        self.save_pandda_inspect_events_csv_file()
-        self.logger.info('interesting: {0!s}'.format(val))
-
-    def set_ligand_confidence_button(self):
-        found = False
-        for item in self.ligand_confidence_button_labels:
-            if item[1] == self.ligand_confidence:
-                self.ligand_confidence_button_list[item[0]].set_active(True)
-                found = True
-                break
-        if not found:
-            self.ligand_confidence_button_list[0].set_active(True)
 
     # ------------------------------------------------------------------
     # Folder / CSV initialisation
@@ -583,6 +701,16 @@ class inspect_gui(object):
                 self.comment_index = n
             elif item == 'Interesting':
                 self.interesting_index = n
+
+        # Parse slist (sites) column indices
+        if self.slist:
+            for n, item in enumerate(self.slist[0]):
+                if item in ('site_num', 'site_idx'):
+                    self.slist_site_num_index = n
+                elif item == 'Name':
+                    self.slist_site_name_index = n
+                elif item == 'Comment':
+                    self.slist_site_comment_index = n
 
         self.show_content_of_event_csv_file()
 
@@ -727,7 +855,7 @@ class inspect_gui(object):
         coot.set_last_map_colour(0, 0, 1)
         self.show_emap = 1
         coot.set_contour_level_in_sigma(
-            self.mol_dict['emap'], 1.0 - float(self.bdc))
+            self.mol_dict['emap'], 2.0 * (1.0 - float(self.bdc)))
 
     def get_zmap(self, missing_files):
         zmap = ''
@@ -854,6 +982,9 @@ class inspect_gui(object):
         self.ligand_confidence = None
         self.comment = ''
         self.interesting = False
+        self.ligand_placed = False
+        self.site_name = ''
+        self.site_comment = ''
         self.merged = False
 
     def update_params(self):
@@ -888,22 +1019,27 @@ class inspect_gui(object):
         if self.interesting_index is not None:
             self.interesting = (
                 self.elist[self.index][self.interesting_index].lower() == 'true')
+        if self.ligand_placed_index is not None:
+            self.ligand_placed = (
+                self.elist[self.index][self.ligand_placed_index].lower() == 'true')
+        self._load_site_info()
         return missing_files
 
     def update_labels(self):
-        self.xtal_label.set_label(str(self.xtal))
-        self.resolution_label.set_label(str(self.resolution))
-        self.r_free_label.set_label(str(self.r_free))
-        self.r_work_label.set_label(str(self.r_work))
-        self.event_label.set_label(str(self.event))
-        self.site_label.set_label(str(self.site))
-        self.bdc_label.set_label(str(self.bdc))
-        # Update comment and interesting widgets without triggering their
-        # save callbacks (which would overwrite CSV with stale data).
+        self.info_labels['dataset_id'].set_label(str(self.xtal))
+        self.info_labels['event_num'].set_label(str(self.event))
+        self.info_labels['site_num'].set_label(str(self.site))
+        self.info_labels['bdc'].set_label(str(self.bdc))
+        self.info_labels['resolution'].set_label(str(self.resolution))
+        self.info_labels['rfree_rwork'].set_label(
+            '{0!s} / {1!s}'.format(self.r_free, self.r_work))
         self._updating_widgets = True
         self.comment_entry.set_text(self.comment)
-        self.interesting_checkbutton.set_active(self.interesting)
+        self.site_name_entry.set_text(self.site_name)
+        self.site_comment_entry.set_text(self.site_comment)
         self._updating_widgets = False
+        self._set_annotation_buttons()
+        self._update_counters()
 
     def recentre_on_event(self):
         coot.set_rotation_centre(self.x, self.y, self.z)
@@ -912,17 +1048,20 @@ class inspect_gui(object):
         sc = self.selected_selection_criterion
         if sc is None or sc.startswith("show all events"):
             return True
-        lc = self.ligand_confidence
-        if sc == "show no ligands bound":
-            return "no ligand bound" in lc
-        if sc == "show unknown ligands":
-            return "unknown ligand" in lc
-        if sc == "show low confidence ligands":
-            return "low confidence" in lc
-        if sc == "show high confidence ligands":
-            return "high confidence" in lc
+        lc = self.ligand_confidence or ''
+        if sc == 'show unassigned':
+            return lc in ('unassigned', '', 'Low Confidence')
+        if sc == 'show no ligands bound':
+            return 'no ligand bound' in lc or lc == 'Low Confidence'
+        if sc == 'show low confidence ligands':
+            return lc in ('Low Confidence', 'low confidence', 'unassigned',
+                          'no ligand bound', 'unknown ligand', 'ambiguous density')
+        if sc == 'show medium confidence ligands':
+            return lc in ('Medium Confidence', 'event map only')
+        if sc == 'show high confidence ligands':
+            return lc in ('High Confidence', '2fofc map')
         if sc == 'show not viewed events':
-            return 'True' not in self.elist[self.index][self.viewed_index]
+            return self.elist[self.index][self.viewed_index].lower() != 'true'
         return False
 
     # ------------------------------------------------------------------
@@ -954,7 +1093,7 @@ class inspect_gui(object):
         if self.current_sample_matches_selection_criteria() and not missing_files:
             self.logger.info('loading {0!s} event {1!s}'.format(
                 self.xtal, self.event))
-            self.set_ligand_confidence_button()
+            self._set_annotation_buttons()
             self.update_labels()
             self.recentre_on_event()
             self.load_ligcif()
@@ -1007,7 +1146,11 @@ class inspect_gui(object):
             self.logger.info('creating {0!s}'.format(p))
             os.mkdir(p)
 
-    def save_next(self, widget):
+    def save_model(self, widget):
+        """Save current protein model to modelled_structures (without advancing)."""
+        if self.mol_dict.get('protein') is None or self.panddaDir is None:
+            self.logger.warning('no protein loaded; cannot save model')
+            return
         self.check_if_modelled_structures_folder_exists()
         base = os.path.join(self.panddaDir, 'processed_datasets',
                             self.xtal, 'modelled_structures')
@@ -1025,11 +1168,19 @@ class inspect_gui(object):
         if os.path.isfile(model_link):
             os.remove(model_link)
         os.chdir(base)
-        os.system('/bin/cp {0!s} {1!s}-pandda-model.pdb'.format(
-            new, self.xtal))
+        os.system('/bin/cp {0!s} {1!s}-pandda-model.pdb'.format(new, self.xtal))
+        self.logger.info('saved model: {0!s}'.format(new))
         if self.merged:
-            self.elist[self.index][self.ligand_placed_index] = 'True'
+            if self.ligand_placed_index is not None:
+                self.elist[self.index][self.ligand_placed_index] = 'True'
+                self._updating_widgets = True
+                self.ligand_placed_radio_yes.set_active(True)
+                self._updating_widgets = False
             self.save_pandda_inspect_events_csv_file()
+
+    def save_next(self, widget):
+        """Backward-compat alias for save_model."""
+        self.save_model(widget)
 
     # ------------------------------------------------------------------
     # Navigation
@@ -1056,21 +1207,22 @@ class inspect_gui(object):
         self.save_comment(None)
         self.change_event(-1)
 
-    def next_event(self, widget):
+    def next_event_no_save(self, widget):
+        """Advance to next event, saving annotation but not the model."""
         self.save_comment(None)
         self.save_event_as_viewed()
-        for n, b in enumerate(self.ligand_confidence_button_list):
-            if b.get_active():
-                for c in self.ligand_confidence_button_labels:
-                    if c[0] == n:
-                        self.elist[self.index][
-                            self.ligand_confidence_index] = c[1]
-                        self.logger.info(
-                            "saving confidence as '{0!s}'".format(c[1]))
-                        self.save_pandda_inspect_events_csv_file()
-                        break
-                break
         self.change_event(1)
+
+    def next_event_save(self, widget):
+        """Save model then advance to next event."""
+        self.save_comment(None)
+        self.save_model(None)
+        self.save_event_as_viewed()
+        self.change_event(1)
+
+    # kept for backward compatibility
+    def next_event(self, widget):
+        self.next_event_no_save(widget)
 
     def previous_site(self, widget):
         self.logger.info('moving to previous site')
@@ -1127,6 +1279,190 @@ class inspect_gui(object):
             self.show_averagemap = 1 - self.show_averagemap
             _set_map_displayed(
                 self.mol_dict['averagemap'], self.show_averagemap)
+
+    # ------------------------------------------------------------------
+    # New helper methods
+    # ------------------------------------------------------------------
+
+    def _load_site_info(self):
+        """Populate self.site_name / self.site_comment from slist."""
+        self.site_name = ''
+        self.site_comment = ''
+        if not hasattr(self, 'slist') or not self.slist:
+            return
+        if self.slist_site_num_index is None or self.site is None:
+            return
+        for row in self.slist[1:]:
+            if str(row[self.slist_site_num_index]) == str(self.site):
+                if self.slist_site_name_index is not None:
+                    raw = row[self.slist_site_name_index]
+                    self.site_name = '' if raw in ('None', 'none', '') else raw
+                if self.slist_site_comment_index is not None:
+                    raw = row[self.slist_site_comment_index]
+                    self.site_comment = '' if raw in ('None', 'none', '') else raw
+                break
+
+    def _update_counters(self):
+        """Refresh event/site counter labels and progress bar."""
+        if not hasattr(self, 'elist') or not self.elist:
+            return
+        total_events = max(len(self.elist) - 1, 0)
+        self.event_counter_label.set_label(
+            'Event  {0!s}  of  {1!s}'.format(max(self.index, 0), total_events))
+        total_sites = max(len(self.slist) - 1, 0) if hasattr(self, 'slist') and self.slist else 0
+        self.site_counter_label.set_label(
+            'Site  {0!s}  of  {1!s}'.format(
+                self.site if self.site is not None else '-', total_sites))
+        if total_events > 0:
+            self.crystal_progressbar.set_fraction(
+                min(1.0, float(max(self.index, 0)) / float(total_events)))
+
+    def go_to_dataset(self, widget):
+        """Jump to the first event for the dataset name in goto_entry."""
+        if not hasattr(self, 'elist') or not self.elist:
+            return
+        target = self.goto_entry.get_text().strip()
+        if not target:
+            return
+        for n in range(1, len(self.elist)):
+            if self.elist[n][self.xtal_index] == target:
+                self.change_event(n - self.index)
+                return
+        self.logger.warning('dataset not found: {0!s}'.format(target))
+
+    def show_summary(self, widget):
+        """Log a count of events in each annotation state."""
+        if not hasattr(self, 'elist') or not self.elist:
+            return
+        total  = len(self.elist) - 1
+        viewed = sum(1 for r in self.elist[1:]
+                     if r[self.viewed_index].lower() == 'true')
+        high = medium = low = 0
+        if self.ligand_confidence_index is not None:
+            for r in self.elist[1:]:
+                lc = r[self.ligand_confidence_index]
+                if lc in ('High Confidence', '2fofc map'):
+                    high += 1
+                elif lc in ('Medium Confidence', 'event map only'):
+                    medium += 1
+                else:
+                    low += 1
+        self.logger.info(
+            'Summary: {0} total, {1} viewed | '
+            'High: {2}  Medium: {3}  Low/unassigned: {4}'.format(
+                total, viewed, high, medium, low))
+
+    def update_html(self, widget):
+        """Hook for XCE HTML update (no-op outside XCE context)."""
+        self.logger.info('update_html: no-op outside XCE context')
+
+    def next_unviewed_event(self, widget):
+        """Jump to the next event with Viewed=False."""
+        if not hasattr(self, 'elist') or not self.elist:
+            return
+        start = self.index + 1 if self.index >= 1 else 1
+        for n in range(start, len(self.elist)):
+            if self.elist[n][self.viewed_index].lower() != 'true':
+                self.change_event(n - self.index)
+                return
+        self.logger.info('no more unviewed events')
+
+    def next_modelled_event(self, widget):
+        """Jump to the next event that has a saved pandda-model.pdb."""
+        if not hasattr(self, 'elist') or not self.elist or self.panddaDir is None:
+            return
+        start = self.index + 1 if self.index >= 1 else 1
+        for n in range(start, len(self.elist)):
+            xtal = self.elist[n][self.xtal_index]
+            model = os.path.join(
+                self.panddaDir, 'processed_datasets', xtal,
+                'modelled_structures', '{0!s}-pandda-model.pdb'.format(xtal))
+            if os.path.isfile(model):
+                self.change_event(n - self.index)
+                return
+        self.logger.info('no more modelled events')
+
+    def reload_last_saved_model(self, widget):
+        """Close current protein and reload the latest fitted-v*.pdb."""
+        if self.panddaDir is None or self.xtal is None:
+            return
+        base = os.path.join(self.panddaDir, 'processed_datasets',
+                            self.xtal, 'modelled_structures')
+        existing = sorted(glob.glob(os.path.join(base, 'fitted-v*.pdb')))
+        if not existing:
+            self.logger.warning('no saved model for {0!s}'.format(self.xtal))
+            return
+        latest = existing[-1]
+        if self.mol_dict.get('protein') is not None:
+            coot.close_molecule(self.mol_dict['protein'])
+        self.pdb = latest
+        self.load_pdb()
+        self.logger.info('reloaded: {0!s}'.format(latest))
+
+    def open_next_ligand(self, widget):
+        """Advance to the next event without saving the model."""
+        self.save_comment(None)
+        self.save_event_as_viewed()
+        self.change_event(1)
+
+    def save_site_info(self, widget):
+        """Save site Name and Comment entries to pandda_inspect_sites.csv."""
+        if getattr(self, '_updating_widgets', False) or self.site is None:
+            return
+        if not hasattr(self, 'slist') or not self.slist:
+            return
+        if self.slist_site_num_index is None:
+            return
+        name    = self.site_name_entry.get_text()
+        comment = self.site_comment_entry.get_text()
+        for row in self.slist[1:]:
+            if str(row[self.slist_site_num_index]) == str(self.site):
+                if self.slist_site_name_index is not None:
+                    row[self.slist_site_name_index] = name
+                if self.slist_site_comment_index is not None:
+                    row[self.slist_site_comment_index] = comment
+                break
+        path = os.path.join(self.analysis_folder, 'pandda_inspect_sites.csv')
+        with _csv_open_w(path) as f:
+            csv.writer(f).writerows(self.slist)
+        self.logger.info('saved site info for site {0!s}'.format(self.site))
+
+    def load_input_mtz_clicked(self, widget):
+        """Reload the input MTZ for the current crystal."""
+        if self.xraymap and os.path.isfile(self.xraymap):
+            imol = coot.auto_read_make_and_draw_maps(self.xraymap)
+            self.mol_dict['xraymap'] = imol
+            self.logger.info('loaded input mtz: {0!s}'.format(self.xraymap))
+        else:
+            self.logger.warning('input mtz not found')
+
+    def load_average_map_clicked(self, widget):
+        """Load the ground-state average map."""
+        if self.averagemap and os.path.isfile(self.averagemap):
+            self.load_averagemap()
+        else:
+            self.logger.warning('average map not found')
+
+    def load_unfitted_model_clicked(self, widget):
+        """Load the input (unfitted) PDB alongside the current model."""
+        if self.panddaDir is None or self.xtal is None:
+            return
+        input_pdb = os.path.join(
+            self.panddaDir, 'processed_datasets', self.xtal,
+            '{0!s}-pandda-input.pdb'.format(self.xtal))
+        if os.path.isfile(input_pdb):
+            coot.handle_read_draw_molecule_with_recentre(input_pdb, 0)
+            self.logger.info('loaded unfitted model: {0!s}'.format(input_pdb))
+        else:
+            self.logger.warning('unfitted model not found: {0!s}'.format(input_pdb))
+
+    def create_new_ligand(self, widget):
+        """Load a fresh copy of the ligand from its CIF file."""
+        if self.ligcif and os.path.isfile(self.ligcif):
+            self.load_ligcif()
+            self.logger.info('created new ligand from {0!s}'.format(self.ligcif))
+        else:
+            self.logger.warning('no ligand CIF for {0!s}'.format(self.xtal))
 
     def CANCEL(self, widget):
         self.window.destroy()
