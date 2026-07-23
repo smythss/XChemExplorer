@@ -854,7 +854,7 @@ class inspect_gui(object):
         coot.set_colour_map_rotation_on_read_pdb(0)
         coot.set_last_map_colour(0, 0, 1)
         self.show_emap = 1
-        emap_level = 2.0 * (1.0 - float(self.bdc))
+        emap_level = 2.0 * float(self.bdc)
         try:
             coot.set_contour_level_absolute(self.mol_dict['emap'], emap_level)
         except AttributeError:
