@@ -854,7 +854,7 @@ class inspect_gui(object):
         coot.set_colour_map_rotation_on_read_pdb(0)
         coot.set_last_map_colour(0, 0, 1)
         self.show_emap = 1
-        coot.set_contour_level_in_sigma(
+        coot.set_contour_level(
             self.mol_dict['emap'], 2.0 * (1.0 - float(self.bdc)))
 
     def get_zmap(self, missing_files):
